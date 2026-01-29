@@ -1,0 +1,330 @@
+// Flare Database Schema
+// For use with dbdiagram.io
+// Version: 1.1 (MVP with Practices)
+
+// ============================================
+// CATEGORY HIERARCHIES
+// ============================================
+
+Table symptom_categories {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  name text [not null]
+  parent_id uuid [ref: > symptom_categories.id]
+  level int [not null, note: '1=top, 2=sub, 3=sub-sub']
+  display_order int [default: 0]
+  is_predefined boolean [default: true]
+  user_id uuid
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    parent_id
+    (user_id) [where: `user_id IS NOT NULL`]
+  }
+
+  note: 'Hierarchical symptom categories (Physical > Pain > Head & Face)'
+}
+
+Table metric_categories {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  name text [not null]
+  parent_id uuid [ref: > metric_categories.id]
+  level int [not null]
+  display_order int [default: 0]
+  is_predefined boolean [default: true]
+  user_id uuid
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    parent_id
+  }
+
+  note: 'Categories for measurable health metrics'
+}
+
+Table practice_categories {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  name text [not null]
+  display_order int [default: 0]
+  is_predefined boolean [default: true]
+  user_id uuid
+  created_at timestamp [default: `now()`]
+
+  note: 'Simple categories for organizing health practices (Supplements, Exercise, etc.)'
+}
+
+// ============================================
+// TYPE DEFINITIONS
+// ============================================
+
+Table symptom_types {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  name text [not null]
+  category_id uuid [not null, ref: > symptom_categories.id]
+  severity_scale text [default: '0-10']
+  is_predefined boolean [default: true]
+  user_id uuid
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    category_id
+  }
+
+  note: 'Individual symptom definitions within categories'
+}
+
+Table metric_types {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  name text [not null]
+  category_id uuid [not null, ref: > metric_categories.id]
+  unit text
+  default_target decimal
+  is_predefined boolean [default: true]
+  user_id uuid
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    category_id
+  }
+
+  note: 'Metric definitions with units and targets'
+}
+
+Table body_locations {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  name text [not null, unique]
+  region text [not null]
+  display_order int [default: 0]
+
+  indexes {
+    region
+  }
+
+  note: 'Reference table for anatomical locations'
+}
+
+// ============================================
+// USER DATA TABLES
+// ============================================
+
+Table symptom_logs {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  user_id uuid [not null]
+  symptom_type_id uuid [not null, ref: > symptom_types.id]
+  severity int [not null, note: '0-10 scale']
+  started_at timestamp [not null]
+  duration_minutes int
+  location_id uuid [ref: > body_locations.id]
+  notes text
+  metadata jsonb [default: '{}']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    user_id
+    (user_id, started_at)
+    symptom_type_id
+    started_at
+  }
+
+  note: 'User symptom entries with severity and timing'
+}
+
+Table practices {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  user_id uuid [not null]
+  name text [not null]
+  category_id uuid [ref: > practice_categories.id]
+  tracking_type text [not null, note: 'metric or completion']
+  target_frequency int [note: 'Times per day for completion (e.g., 2 for 2x/day)']
+  metric_type_id uuid [ref: > metric_types.id]
+  target_value decimal [note: 'Target for metrics (e.g., 8 glasses)']
+  frequency text [note: 'daily, weekly, specific_days']
+  frequency_details jsonb
+  reminder_enabled boolean [default: false]
+  reminder_times jsonb
+  active boolean [default: true]
+  started_at timestamp
+  ended_at timestamp
+  notes text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    user_id
+    (user_id, active)
+    category_id
+  }
+
+  note: 'User health practices (commitments to health activities)'
+}
+
+Table metrics {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  user_id uuid [not null]
+  metric_type_id uuid [not null, ref: > metric_types.id]
+  value decimal [not null]
+  recorded_at timestamp [not null]
+  practice_id uuid [ref: > practices.id]
+  source text [default: 'manual', note: 'manual, journal, integration']
+  notes text
+  metadata jsonb [default: '{}']
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    user_id
+    (user_id, recorded_at)
+    metric_type_id
+    practice_id
+    recorded_at
+  }
+
+  note: 'Single source of truth for all user metric values'
+}
+
+Table practice_completions {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  user_id uuid [not null]
+  practice_id uuid [not null, ref: > practices.id]
+  completed_at timestamp [not null]
+  completed boolean [default: true]
+  notes text
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    user_id
+    practice_id
+    (user_id, completed_at)
+  }
+
+  note: 'Completion records for practices with completion-based tracking'
+}
+
+Table practice_symptoms {
+  practice_id uuid [not null, ref: > practices.id]
+  symptom_type_id uuid [not null, ref: > symptom_types.id]
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    symptom_type_id
+  }
+
+  note: 'Links practices to symptoms they are expected to help'
+}
+
+// ============================================
+// MEDICATIONS
+// ============================================
+
+Table medications {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  user_id uuid [not null]
+  name text [not null]
+  dosage text
+  frequency text
+  reminder_times jsonb
+  active boolean [default: true]
+  started_at timestamp
+  ended_at timestamp
+  notes text
+  is_supplement boolean [default: false]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    user_id
+    (user_id, active)
+  }
+
+  note: 'User medications and supplements'
+}
+
+Table medication_symptoms {
+  medication_id uuid [not null, ref: > medications.id]
+  symptom_type_id uuid [not null, ref: > symptom_types.id]
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    symptom_type_id
+  }
+
+  note: 'Links medications to symptoms they are expected to help'
+}
+
+Table medication_logs {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  user_id uuid [not null]
+  medication_id uuid [not null, ref: > medications.id]
+  taken_at timestamp [not null]
+  taken boolean [default: true]
+  notes text
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    user_id
+    medication_id
+    (user_id, taken_at)
+  }
+
+  note: 'Medication adherence records'
+}
+
+// ============================================
+// EXPERIMENTS
+// ============================================
+
+Table experiments {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  user_id uuid [not null]
+  name text [not null]
+  description text
+  start_date date [not null]
+  end_date date
+  status text [default: 'active', note: 'active, completed, cancelled']
+  practice_ids jsonb [note: 'Related practices']
+  target_symptoms jsonb [note: 'symptom_type_ids to monitor']
+  notes text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    user_id
+    (user_id, status)
+    (start_date, end_date)
+  }
+
+  note: 'User-defined experiments to test interventions'
+}
+
+// ============================================
+// TABLE GROUPS FOR VISUALIZATION
+// ============================================
+
+TableGroup categories {
+  symptom_categories
+  metric_categories
+  practice_categories
+}
+
+TableGroup types {
+  symptom_types
+  metric_types
+  body_locations
+}
+
+TableGroup user_logs {
+  symptom_logs
+  metrics
+  practice_completions
+  medication_logs
+}
+
+TableGroup user_config {
+  practices
+  medications
+  experiments
+}
+
+TableGroup symptom_links {
+  practice_symptoms
+  medication_symptoms
+}
