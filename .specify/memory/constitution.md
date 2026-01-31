@@ -1,19 +1,18 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version Change: INITIAL → 1.0.0
-Modified Principles: N/A (initial creation)
+Version Change: 1.0.0 → 1.1.0
+Modified Principles: None
 Added Sections:
-  - Core Principles (5 principles)
-  - Security & Privacy Requirements
-  - Development Workflow
-  - Governance
-Removed Sections: N/A
+  - Architectural Decision Records (ADR) requirement in Development Workflow
+Removed Sections: None
 Templates Requiring Updates:
-  ⚠ .specify/templates/plan-template.md - Review for alignment with principles
-  ⚠ .specify/templates/spec-template.md - Review for alignment with principles
-  ⚠ .specify/templates/tasks-template.md - Review for alignment with principles
-Follow-up TODOs: None
+  ⚠ .specify/templates/plan-template.md - Review for ADR alignment
+  ⚠ .specify/templates/spec-template.md - Review for ADR alignment
+  ⚠ .specify/templates/tasks-template.md - Review for ADR alignment
+Follow-up TODOs:
+  - Create docs/adr/ directory structure
+  - Document ADR template format
 -->
 
 # Flare Project Constitution
@@ -62,11 +61,23 @@ Security vulnerabilities (SQL injection, XSS, command injection, etc.) are unacc
 
 ## Development Workflow
 
+### Architectural Decision Records (ADR)
+All architectural decisions MUST be documented in an Architectural Decision Record (ADR). This includes:
+
+- Technology stack choices (frameworks, libraries, services)
+- Infrastructure decisions (deployment, hosting, CI/CD)
+- Security and privacy architecture choices
+- Data model and schema decisions
+- API design and integration patterns
+
+ADRs should capture the decision, context, considered alternatives, and rationale. ADRs are stored in `docs/adr/` and numbered sequentially.
+
 ### Approval Process
 1. Propose implementation approach with clear rationale
-2. Wait for human developer approval before coding
-3. Implement approved solution
-4. Request review of implementation
+2. Document architectural decisions in ADR format if applicable
+3. Wait for human developer approval before coding
+4. Implement approved solution
+5. Request review of implementation
 
 ### Code Quality Standards
 - No dead code or commented-out blocks
@@ -98,4 +109,4 @@ All pull requests, code reviews, and implementation decisions must verify alignm
 - MINOR: New principles added or material expansions to existing guidance
 - PATCH: Clarifications, wording improvements, non-semantic refinements
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-30 | **Last Amended**: 2026-01-30
+**Version**: 1.1.0 | **Ratified**: 2026-01-30 | **Last Amended**: 2026-01-30
