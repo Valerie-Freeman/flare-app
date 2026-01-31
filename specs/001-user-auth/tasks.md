@@ -106,6 +106,7 @@
 - [ ] T030 [US3] Create recovery passphrase entry modal/screen for post-reset MEK recovery in app/(auth)/sign-in.js
 - [ ] T031 [US3] Implement MEK recovery using recovery passphrase (decrypt + re-encrypt with new password) in src/services/auth.js
 - [ ] T032 [US3] Handle incorrect recovery passphrase with clear error message in app/(auth)/sign-in.js
+- [ ] T033 [US3] Implement passphrase entry lockout after 3 incorrect attempts (temporary lock with clear message) in src/services/auth.js
 
 **Checkpoint**: User Story 3 complete - password reset with data recovery works
 
@@ -119,10 +120,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T033 [US4] Add sign out button/action to app (settings or profile area)
-- [ ] T034 [US4] Implement signOut in auth service with local key clearing in src/services/auth.js
-- [ ] T035 [US4] Clear MEK and user_id from expo-secure-store on sign out in src/services/auth.js
-- [ ] T036 [US4] Navigate to welcome screen after sign out in src/contexts/AuthContext.js
+- [ ] T034 [US4] Add sign out button/action to app (settings or profile area)
+- [ ] T035 [US4] Implement signOut in auth service with local key clearing in src/services/auth.js
+- [ ] T036 [US4] Clear MEK and user_id from expo-secure-store on sign out in src/services/auth.js
+- [ ] T037 [US4] Navigate to welcome screen after sign out in src/contexts/AuthContext.js
 
 **Checkpoint**: User Story 4 complete - sign out clears all local auth state
 
@@ -136,11 +137,11 @@
 
 ### Implementation for User Story 5
 
-- [ ] T037 [US5] Create security settings screen with passphrase management in app/(app)/settings/security.js
-- [ ] T038 [US5] Add re-authentication requirement before viewing passphrase in app/(app)/settings/security.js
-- [ ] T039 [US5] Display current recovery passphrase with copy functionality in app/(app)/settings/security.js
-- [ ] T040 [US5] Implement passphrase regeneration with confirmation warning in app/(app)/settings/security.js
-- [ ] T041 [US5] Update encrypted_mek_recovery in user_keys after passphrase regeneration in src/services/auth.js
+- [ ] T038 [US5] Create security settings screen with passphrase management in app/(app)/settings/security.js
+- [ ] T039 [US5] Add re-authentication requirement before viewing passphrase in app/(app)/settings/security.js
+- [ ] T040 [US5] Display current recovery passphrase with copy functionality in app/(app)/settings/security.js
+- [ ] T041 [US5] Implement passphrase regeneration with confirmation warning in app/(app)/settings/security.js
+- [ ] T042 [US5] Update encrypted_mek_recovery in user_keys after passphrase regeneration in src/services/auth.js
 
 **Checkpoint**: User Story 5 complete - users can manage their recovery passphrase
 
@@ -150,13 +151,13 @@
 
 **Purpose**: Account lockout, edge cases, and final improvements
 
-- [ ] T042 Implement failed login attempt tracking in user metadata in src/services/auth.js
-- [ ] T043 Add lockout check before sign-in attempts (15 min after 5 failures) in src/services/auth.js
-- [ ] T044 Display lockout status with remaining time to user in app/(auth)/sign-in.js
-- [ ] T045 Reset failed attempt count on successful sign-in in src/services/auth.js
-- [ ] T046 Add offline detection with "Internet connection required" message in src/contexts/AuthContext.js
-- [ ] T047 Create ADR for encryption key management in docs/adr/001-encryption-key-management.md
-- [ ] T048 Run quickstart.md validation (manual test checklist)
+- [ ] T043 Implement failed login attempt tracking in user metadata in src/services/auth.js
+- [ ] T044 Add lockout check before sign-in attempts (15 min after 5 failures) in src/services/auth.js
+- [ ] T045 Display lockout status with remaining time to user in app/(auth)/sign-in.js
+- [ ] T046 Reset failed attempt count on successful sign-in in src/services/auth.js
+- [ ] T047 Add offline detection with "Internet connection required" message in src/contexts/AuthContext.js
+- [x] T048 Create ADR for encryption key management in docs/adr/001-encryption-key-management.md
+- [ ] T049 Run quickstart.md validation (manual test checklist)
 
 ---
 
@@ -194,8 +195,9 @@ Within **User Story 1**:
 - After T013 (form created), T014-T018 build sequentially
 
 Within **Phase 8 (Polish)**:
-- T042-T045 (lockout logic) are sequential
-- T046 (offline detection) and T047 (ADR) can run in parallel
+- T043-T046 (lockout logic) are sequential
+- T047 (offline detection) can run in parallel with other polish tasks
+- T048 (ADR) already complete
 
 ---
 

@@ -87,7 +87,9 @@ flare-mobile/
 │   │   ├── sign-up.js
 │   │   └── forgot-password.js
 │   └── (app)/
-│       └── _layout.js           # Protected routes layout
+│       ├── _layout.js           # Protected routes layout
+│       └── settings/
+│           └── security.js      # Security settings (passphrase management)
 └── __tests__/
     └── services/
         ├── auth.test.js
