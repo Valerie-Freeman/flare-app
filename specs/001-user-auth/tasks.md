@@ -103,10 +103,10 @@
 - [x] T027 [US3] Show success message after password reset email sent in app/(auth)/forgot-password.js
 - [x] T028 [US3] Handle PASSWORD_RECOVERY auth event for deep link callback in src/contexts/AuthContext.js
 - [x] T029 [US3] Detect password_reset_pending flag and prompt for recovery passphrase in src/contexts/AuthContext.js
-- [ ] T030 [US3] Create recovery passphrase entry modal/screen for post-reset MEK recovery in app/(auth)/sign-in.js
+- [x] T030 [US3] Create recovery passphrase entry modal/screen for post-reset MEK recovery in app/(auth)/sign-in.js
 - [x] T031 [US3] Implement MEK recovery using recovery passphrase (decrypt + re-encrypt with new password) in src/services/auth.js
-- [ ] T032 [US3] Handle incorrect recovery passphrase with clear error message in app/(auth)/sign-in.js
-- [ ] T033 [US3] Implement passphrase entry lockout after 3 incorrect attempts (temporary lock with clear message) in src/services/auth.js
+- [x] T032 [US3] Handle incorrect recovery passphrase with clear error message in app/(auth)/sign-in.js
+- [x] T033 [US3] Implement passphrase entry lockout after 3 incorrect attempts (temporary lock with clear message) in src/services/auth.js
 
 **Checkpoint**: User Story 3 complete - password reset with data recovery works
 
@@ -151,11 +151,11 @@
 
 **Purpose**: Account lockout, edge cases, and final improvements
 
-- [ ] T043 Implement failed login attempt tracking in user metadata in src/services/auth.js
-- [ ] T044 Add lockout check before sign-in attempts (15 min after 5 failures) in src/services/auth.js
-- [ ] T045 Display lockout status with remaining time to user in app/(auth)/sign-in.js
-- [ ] T046 Reset failed attempt count on successful sign-in in src/services/auth.js
-- [ ] T047 Add offline detection with "Internet connection required" message in src/contexts/AuthContext.js
+- [x] T043 Implement failed login attempt tracking in user metadata in src/services/auth.js
+- [x] T044 Add lockout check before sign-in attempts (15 min after 5 failures) in src/services/auth.js
+- [x] T045 Display lockout status with remaining time to user in app/(auth)/sign-in.js
+- [x] T046 Reset failed attempt count on successful sign-in in src/services/auth.js
+- [x] T047 Add offline detection with "Internet connection required" message in src/contexts/AuthContext.js
 - [x] T048 Create ADR for encryption key management in docs/adr/001-encryption-key-management.md
 - [ ] T049 Run quickstart.md validation (manual test checklist)
 

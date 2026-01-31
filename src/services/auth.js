@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import * as SecureStore from 'expo-secure-store';
 import {
   generateMEK,
   generateSalt,
@@ -10,6 +11,90 @@ import {
   clearAllLocalAuthData,
 } from './encryption';
 import { generatePassphrase } from '../utils/passphrase';
+
+// Login attempt tracking constants
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const LOGIN_ATTEMPTS_KEY = 'flare.login_attempts';
+
+/**
+ * Gets login attempt data for an email from secure storage.
+ */
+async function getLoginAttempts(email) {
+  try {
+    const data = await SecureStore.getItemAsync(LOGIN_ATTEMPTS_KEY);
+    if (!data) return { attempts: 0, lockoutUntil: null };
+    const attempts = JSON.parse(data);
+    return attempts[email.toLowerCase()] || { attempts: 0, lockoutUntil: null };
+  } catch {
+    return { attempts: 0, lockoutUntil: null };
+  }
+}
+
+/**
+ * Updates login attempt data for an email in secure storage.
+ */
+async function setLoginAttempts(email, attemptData) {
+  try {
+    const data = await SecureStore.getItemAsync(LOGIN_ATTEMPTS_KEY);
+    const attempts = data ? JSON.parse(data) : {};
+    attempts[email.toLowerCase()] = attemptData;
+    await SecureStore.setItemAsync(LOGIN_ATTEMPTS_KEY, JSON.stringify(attempts));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Checks if login is locked out for an email.
+ * Returns { locked: boolean, remainingMs: number }
+ */
+export async function checkLoginLockout(email) {
+  const { lockoutUntil } = await getLoginAttempts(email);
+  if (!lockoutUntil) return { locked: false, remainingMs: 0 };
+
+  const remaining = lockoutUntil - Date.now();
+  if (remaining <= 0) {
+    // Lockout expired, reset
+    await setLoginAttempts(email, { attempts: 0, lockoutUntil: null });
+    return { locked: false, remainingMs: 0 };
+  }
+
+  return { locked: true, remainingMs: remaining };
+}
+
+/**
+ * Records a failed login attempt. Returns lockout info.
+ */
+export async function recordFailedLogin(email) {
+  const { attempts } = await getLoginAttempts(email);
+  const newAttempts = attempts + 1;
+
+  if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
+    const lockoutUntil = Date.now() + LOGIN_LOCKOUT_DURATION_MS;
+    await setLoginAttempts(email, { attempts: newAttempts, lockoutUntil });
+    return {
+      locked: true,
+      remainingMs: LOGIN_LOCKOUT_DURATION_MS,
+      attempts: newAttempts
+    };
+  }
+
+  await setLoginAttempts(email, { attempts: newAttempts, lockoutUntil: null });
+  return {
+    locked: false,
+    remainingMs: 0,
+    attempts: newAttempts,
+    remaining: MAX_LOGIN_ATTEMPTS - newAttempts
+  };
+}
+
+/**
+ * Clears login attempts on successful login.
+ */
+export async function clearLoginAttempts(email) {
+  await setLoginAttempts(email, { attempts: 0, lockoutUntil: null });
+}
 
 /**
  * Signs up a new user with email and password.

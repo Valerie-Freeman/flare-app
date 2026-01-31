@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { supabase } from '../services/supabase';
 import {
   clearAllLocalAuthData,
@@ -17,6 +18,36 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [needsRecoveryPassphrase, setNeedsRecoveryPassphrase] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+
+  // Check network connectivity
+  const checkNetwork = async () => {
+    try {
+      const response = await fetch('https://www.google.com/generate_204', {
+        method: 'HEAD',
+        mode: 'no-cors',
+      });
+      setIsOnline(true);
+      return true;
+    } catch {
+      setIsOnline(false);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    // Check network on app state change
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkNetwork();
+      }
+    });
+
+    // Initial network check
+    checkNetwork();
+
+    return () => subscription?.remove();
+  }, []);
 
   useEffect(() => {
     // Get initial session
@@ -68,9 +99,11 @@ export function AuthProvider({ children }) {
   const value = {
     session,
     isLoading,
+    isOnline,
     needsRecoveryPassphrase,
     signOut,
     clearRecoveryFlag,
+    checkNetwork,
     storeMEKLocally,
     getMEKFromStorage,
     storeUserIdLocally,
