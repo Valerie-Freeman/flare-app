@@ -55,20 +55,8 @@ CREATE TABLE user_keys (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- User profiles table
-CREATE TABLE user_profiles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE NOT NULL,
-  display_name VARCHAR(100),
-  onboarding_completed BOOLEAN NOT NULL DEFAULT false,
-  recovery_passphrase_confirmed BOOLEAN NOT NULL DEFAULT false,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
 -- Indexes
 CREATE INDEX user_keys_user_id_idx ON user_keys(user_id);
-CREATE INDEX user_profiles_user_id_idx ON user_profiles(user_id);
 ```
 
 ### Enable Row-Level Security
@@ -76,7 +64,6 @@ CREATE INDEX user_profiles_user_id_idx ON user_profiles(user_id);
 ```sql
 -- Enable RLS
 ALTER TABLE user_keys ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
 -- user_keys policies
 CREATE POLICY "Users can view own keys" ON user_keys
@@ -86,16 +73,6 @@ CREATE POLICY "Users can insert own keys" ON user_keys
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update own keys" ON user_keys
-  FOR UPDATE USING (auth.uid() = user_id);
-
--- user_profiles policies
-CREATE POLICY "Users can view own profile" ON user_profiles
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own profile" ON user_profiles
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own profile" ON user_profiles
   FOR UPDATE USING (auth.uid() = user_id);
 ```
 
@@ -145,10 +122,8 @@ src/
 │   └── encryption.js
 ├── contexts/
 │   └── AuthContext.js
-├── utils/
-│   └── passphrase.js
-└── hooks/
-    └── useAuth.js
+└── utils/
+    └── passphrase.js
 
 app/
 ├── _layout.js

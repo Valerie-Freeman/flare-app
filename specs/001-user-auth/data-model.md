@@ -10,13 +10,6 @@
 │    auth.users       │         │     user_keys       │
 │  (Supabase managed) │────────▶│  (encryption keys)  │
 └─────────────────────┘    1:1  └─────────────────────┘
-          │
-          │ 1:1 (optional)
-          ▼
-┌─────────────────────┐
-│   user_profiles     │
-│ (app-specific data) │
-└─────────────────────┘
 ```
 
 ## Entities
@@ -41,6 +34,7 @@
 - `failed_login_attempts`: INTEGER - Count of consecutive failed login attempts
 - `lockout_until`: TIMESTAMP - When lockout expires (null if not locked)
 - `password_reset_pending`: BOOLEAN - True if user needs to enter recovery passphrase
+- `recovery_passphrase_confirmed`: BOOLEAN - Whether user confirmed saving passphrase
 
 ---
 
@@ -61,31 +55,6 @@
 
 **Indexes**:
 - `user_keys_user_id_idx` ON user_id (UNIQUE)
-
-**RLS Policies**:
-- SELECT: `auth.uid() = user_id`
-- INSERT: `auth.uid() = user_id`
-- UPDATE: `auth.uid() = user_id`
-- DELETE: `auth.uid() = user_id`
-
----
-
-### 3. user_profiles
-
-**Description**: Extended user profile data for app-specific information. Separate from auth.users to maintain clean separation of concerns.
-
-| Field | Type | Constraints | Description |
-|-------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT uuid_generate_v4() | Primary key |
-| user_id | UUID | FK → auth.users(id), UNIQUE, NOT NULL | Reference to auth user |
-| display_name | VARCHAR(100) | NULLABLE | User's display name |
-| onboarding_completed | BOOLEAN | NOT NULL, DEFAULT false | Whether user finished onboarding |
-| recovery_passphrase_confirmed | BOOLEAN | NOT NULL, DEFAULT false | Whether user confirmed saving passphrase |
-| created_at | TIMESTAMP | NOT NULL, DEFAULT now() | Record creation time |
-| updated_at | TIMESTAMP | NOT NULL, DEFAULT now() | Last update time |
-
-**Indexes**:
-- `user_profiles_user_id_idx` ON user_id (UNIQUE)
 
 **RLS Policies**:
 - SELECT: `auth.uid() = user_id`
@@ -183,7 +152,6 @@
 4. Derive password KEK and recovery KEK using PBKDF2
 5. Encrypt MEK with both KEKs
 6. Create user_keys record with encrypted MEKs and salts
-7. Create user_profiles record with defaults
 
 ### On Password Reset
 1. Supabase Auth resets password
@@ -202,9 +170,8 @@
 
 ### On Account Deletion (Future)
 1. Delete user_keys record
-2. Delete user_profiles record
-3. Delete auth.users record (cascades through Supabase)
-4. Note: Encrypted health data becomes unrecoverable (by design)
+2. Delete auth.users record (cascades through Supabase)
+3. Note: Encrypted health data becomes unrecoverable (by design)
 
 ---
 

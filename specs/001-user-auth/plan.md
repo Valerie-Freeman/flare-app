@@ -72,22 +72,10 @@ flare-mobile/
 ├── src/
 │   ├── contexts/
 │   │   └── AuthContext.js       # Auth state provider
-│   ├── screens/
-│   │   ├── auth/
-│   │   │   ├── WelcomeScreen.js
-│   │   │   ├── SignInScreen.js
-│   │   │   ├── SignUpScreen.js
-│   │   │   ├── ForgotPasswordScreen.js
-│   │   │   ├── ResetPasswordScreen.js
-│   │   │   └── RecoveryPassphraseScreen.js
-│   │   └── settings/
-│   │       └── SecuritySettingsScreen.js
 │   ├── services/
 │   │   ├── supabase.js          # Supabase client config
 │   │   ├── auth.js              # Auth service functions
 │   │   └── encryption.js        # MEK generation and management
-│   ├── hooks/
-│   │   └── useAuth.js           # Auth hook for components
 │   └── utils/
 │       └── passphrase.js        # Recovery passphrase generation
 ├── app/
@@ -99,18 +87,46 @@ flare-mobile/
 │   │   ├── sign-up.js
 │   │   └── forgot-password.js
 │   └── (app)/
-│       └── settings/
-│           └── security.js
+│       └── _layout.js           # Protected routes layout
 └── __tests__/
-    ├── services/
-    │   ├── auth.test.js
-    │   └── encryption.test.js
-    └── screens/
-        └── auth/
-            └── SignInScreen.test.js
+    └── services/
+        ├── auth.test.js
+        └── encryption.test.js
 ```
 
-**Structure Decision**: Mobile application using Expo Router file-based routing. Auth screens in `(auth)` group for unauthenticated users, protected screens in `(app)` group. Services layer handles business logic, contexts manage global state.
+**Structure Decision**: Expo Router file-based routing with screen logic directly in route files (no separate screens layer). Auth screens in `(auth)` group, protected screens in `(app)` group. Services layer handles business logic, contexts manage global state.
+
+## Task Sequence
+
+Implementation order based on technical dependencies:
+
+### Phase 1: Infrastructure
+1. Create `user_keys` table in Supabase
+2. Set up RLS policies for `user_keys`
+3. Create Supabase client with secure storage adapter (`src/services/supabase.js`)
+
+### Phase 2: Core Services
+4. Encryption service - MEK generation, PBKDF2, encrypt/decrypt (`src/services/encryption.js`)
+5. Passphrase utility - BIP39 word generation (`src/utils/passphrase.js`)
+6. Auth service - Supabase auth wrapper + key management (`src/services/auth.js`)
+
+### Phase 3: State Management
+7. AuthContext - session state, auth listener (`src/contexts/AuthContext.js`)
+
+### Phase 4: P1 Screens
+8. Welcome screen (`app/(auth)/welcome.js`)
+9. Sign Up screen with passphrase display (`app/(auth)/sign-up.js`)
+10. Sign In screen (`app/(auth)/sign-in.js`)
+11. Root layout with auth provider (`app/_layout.js`)
+
+### Phase 5: P2 Screens
+12. Forgot Password screen (`app/(auth)/forgot-password.js`)
+13. Password reset deep link handler
+14. Recovery passphrase entry (after password reset)
+15. Sign Out action
+
+### Phase 6: Polish
+16. Account lockout logic (failed attempt tracking)
 
 ## Complexity Tracking
 

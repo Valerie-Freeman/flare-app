@@ -332,29 +332,15 @@ supabase.auth.getUser()
 
 ---
 
-### 7. Create User Profile (on Sign Up)
+### 7. Confirm Recovery Passphrase Saved
 
-**Insert**:
+**Update User Metadata**:
 ```javascript
-supabase
-  .from('user_profiles')
-  .insert({
-    user_id: userId,
-    onboarding_completed: false,
-    recovery_passphrase_confirmed: false
-  })
-```
-
----
-
-### 8. Confirm Recovery Passphrase Saved
-
-**Update**:
-```javascript
-supabase
-  .from('user_profiles')
-  .update({ recovery_passphrase_confirmed: true })
-  .eq('user_id', userId)
+supabase.auth.updateUser({
+  data: {
+    recovery_passphrase_confirmed: true
+  }
+})
 ```
 
 ---
