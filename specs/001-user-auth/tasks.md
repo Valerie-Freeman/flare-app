@@ -38,14 +38,14 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Create Supabase client with expo-secure-store adapter in src/services/supabase.js
-- [ ] T005 [P] Implement encryption service (MEK generation, PBKDF2 key derivation, encrypt/decrypt) in src/services/encryption.js
-- [ ] T006 [P] Implement passphrase generator (BIP39 6-word) in src/utils/passphrase.js
-- [ ] T007 Implement auth service (signUp, signIn, signOut, resetPassword, MEK management) in src/services/auth.js
-- [ ] T008 Create AuthContext with session state and onAuthStateChange listener in src/contexts/AuthContext.js
-- [ ] T009 Create root layout with AuthContext provider in app/_layout.js
-- [ ] T010 Create auth flow layout for unauthenticated routes in app/(auth)/_layout.js
-- [ ] T011 Create protected routes layout with auth guard in app/(app)/_layout.js
+- [x] T004 Create Supabase client with expo-secure-store adapter in src/services/supabase.js
+- [x] T005 [P] Implement encryption service (MEK generation, PBKDF2 key derivation, encrypt/decrypt) in src/services/encryption.js
+- [x] T006 [P] Implement passphrase generator (BIP39 6-word) in src/utils/passphrase.js
+- [x] T007 Implement auth service (signUp, signIn, signOut, resetPassword, MEK management) in src/services/auth.js
+- [x] T008 Create AuthContext with session state and onAuthStateChange listener in src/contexts/AuthContext.js
+- [x] T009 Create root layout with AuthContext provider in app/_layout.js
+- [x] T010 Create auth flow layout for unauthenticated routes in app/(auth)/_layout.js
+- [x] T011 Create protected routes layout with auth guard in app/(app)/_layout.js
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -59,14 +59,14 @@
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Create welcome screen with Create Account and Sign In buttons in app/(auth)/welcome.js
-- [ ] T013 [US1] Create sign-up screen with email/password form and validation in app/(auth)/sign-up.js
-- [ ] T014 [US1] Add password validation (8+ chars, upper, lower, digit) to sign-up form in app/(auth)/sign-up.js
-- [ ] T015 [US1] Integrate signUp auth service call with MEK generation in app/(auth)/sign-up.js
-- [ ] T016 [US1] Display recovery passphrase after successful signup with copy functionality in app/(auth)/sign-up.js
-- [ ] T017 [US1] Add passphrase confirmation step (user acknowledges saving) in app/(auth)/sign-up.js
-- [ ] T018 [US1] Handle signup errors (email exists, invalid password) with user-friendly messages in app/(auth)/sign-up.js
-- [ ] T019 [US1] Navigate to app main screen after passphrase confirmation in app/(auth)/sign-up.js
+- [x] T012 [US1] Create welcome screen with Create Account and Sign In buttons in app/(auth)/welcome.js
+- [x] T013 [US1] Create sign-up screen with email/password form and validation in app/(auth)/sign-up.js
+- [x] T014 [US1] Add password validation (8+ chars, upper, lower, digit) to sign-up form in app/(auth)/sign-up.js
+- [x] T015 [US1] Integrate signUp auth service call with MEK generation in app/(auth)/sign-up.js
+- [x] T016 [US1] Display recovery passphrase after successful signup with copy functionality in app/(auth)/sign-up.js
+- [x] T017 [US1] Add passphrase confirmation step (user acknowledges saving) in app/(auth)/sign-up.js
+- [x] T018 [US1] Handle signup errors (email exists, invalid password) with user-friendly messages in app/(auth)/sign-up.js
+- [x] T019 [US1] Navigate to app main screen after passphrase confirmation in app/(auth)/sign-up.js
 
 **Checkpoint**: User Story 1 complete - new users can register and receive recovery passphrase
 
@@ -80,11 +80,11 @@
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Create sign-in screen with email/password form in app/(auth)/sign-in.js
-- [ ] T021 [US2] Integrate signIn auth service call with MEK decryption in app/(auth)/sign-in.js
-- [ ] T022 [US2] Handle sign-in errors with generic "Invalid email or password" message in app/(auth)/sign-in.js
-- [ ] T023 [US2] Implement automatic session restore on app launch in src/contexts/AuthContext.js
-- [ ] T024 [US2] Navigate to app main screen after successful sign-in in app/(auth)/sign-in.js
+- [x] T020 [US2] Create sign-in screen with email/password form in app/(auth)/sign-in.js
+- [x] T021 [US2] Integrate signIn auth service call with MEK decryption in app/(auth)/sign-in.js
+- [x] T022 [US2] Handle sign-in errors with generic "Invalid email or password" message in app/(auth)/sign-in.js
+- [x] T023 [US2] Implement automatic session restore on app launch in src/contexts/AuthContext.js
+- [x] T024 [US2] Navigate to app main screen after successful sign-in in app/(auth)/sign-in.js
 
 **Checkpoint**: User Stories 1 AND 2 complete - users can register and sign in
 
@@ -98,13 +98,13 @@
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Create forgot-password screen with email input in app/(auth)/forgot-password.js
-- [ ] T026 [US3] Integrate resetPasswordForEmail auth service call in app/(auth)/forgot-password.js
-- [ ] T027 [US3] Show success message after password reset email sent in app/(auth)/forgot-password.js
-- [ ] T028 [US3] Handle PASSWORD_RECOVERY auth event for deep link callback in src/contexts/AuthContext.js
-- [ ] T029 [US3] Detect password_reset_pending flag and prompt for recovery passphrase in src/contexts/AuthContext.js
+- [x] T025 [US3] Create forgot-password screen with email input in app/(auth)/forgot-password.js
+- [x] T026 [US3] Integrate resetPasswordForEmail auth service call in app/(auth)/forgot-password.js
+- [x] T027 [US3] Show success message after password reset email sent in app/(auth)/forgot-password.js
+- [x] T028 [US3] Handle PASSWORD_RECOVERY auth event for deep link callback in src/contexts/AuthContext.js
+- [x] T029 [US3] Detect password_reset_pending flag and prompt for recovery passphrase in src/contexts/AuthContext.js
 - [ ] T030 [US3] Create recovery passphrase entry modal/screen for post-reset MEK recovery in app/(auth)/sign-in.js
-- [ ] T031 [US3] Implement MEK recovery using recovery passphrase (decrypt + re-encrypt with new password) in src/services/auth.js
+- [x] T031 [US3] Implement MEK recovery using recovery passphrase (decrypt + re-encrypt with new password) in src/services/auth.js
 - [ ] T032 [US3] Handle incorrect recovery passphrase with clear error message in app/(auth)/sign-in.js
 - [ ] T033 [US3] Implement passphrase entry lockout after 3 incorrect attempts (temporary lock with clear message) in src/services/auth.js
 
@@ -120,10 +120,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T034 [US4] Add sign out button/action to app (settings or profile area)
-- [ ] T035 [US4] Implement signOut in auth service with local key clearing in src/services/auth.js
-- [ ] T036 [US4] Clear MEK and user_id from expo-secure-store on sign out in src/services/auth.js
-- [ ] T037 [US4] Navigate to welcome screen after sign out in src/contexts/AuthContext.js
+- [x] T034 [US4] Add sign out button/action to app (settings or profile area)
+- [x] T035 [US4] Implement signOut in auth service with local key clearing in src/services/auth.js
+- [x] T036 [US4] Clear MEK and user_id from expo-secure-store on sign out in src/services/auth.js
+- [x] T037 [US4] Navigate to welcome screen after sign out in src/contexts/AuthContext.js
 
 **Checkpoint**: User Story 4 complete - sign out clears all local auth state
 
@@ -137,11 +137,11 @@
 
 ### Implementation for User Story 5
 
-- [ ] T038 [US5] Create security settings screen with passphrase management in app/(app)/settings/security.js
-- [ ] T039 [US5] Add re-authentication requirement before viewing passphrase in app/(app)/settings/security.js
-- [ ] T040 [US5] Display current recovery passphrase with copy functionality in app/(app)/settings/security.js
-- [ ] T041 [US5] Implement passphrase regeneration with confirmation warning in app/(app)/settings/security.js
-- [ ] T042 [US5] Update encrypted_mek_recovery in user_keys after passphrase regeneration in src/services/auth.js
+- [x] T038 [US5] Create security settings screen with passphrase management in app/(app)/settings/security.js
+- [x] T039 [US5] Add re-authentication requirement before viewing passphrase in app/(app)/settings/security.js
+- [x] T040 [US5] Display current recovery passphrase with copy functionality in app/(app)/settings/security.js
+- [x] T041 [US5] Implement passphrase regeneration with confirmation warning in app/(app)/settings/security.js
+- [x] T042 [US5] Update encrypted_mek_recovery in user_keys after passphrase regeneration in src/services/auth.js
 
 **Checkpoint**: User Story 5 complete - users can manage their recovery passphrase
 
