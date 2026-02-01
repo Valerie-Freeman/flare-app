@@ -1,8 +1,15 @@
 # ADR-001: Encryption Key Management
 
-**Status**: Accepted
+**Status**: SUPERSEDED
 **Date**: 2026-01-31
+**Superseded Date**: 2026-01-31
 **Context**: User Authentication Feature (001-user-auth)
+
+> **SUPERSEDED**: This ADR has been superseded. After security review and research into regulatory requirements (HIPAA, FTC) and industry standards, the client-side encryption approach was determined to be over-engineered for Flare's use case. The application now uses Supabase's built-in encryption at rest (AES-256) instead.
+>
+> See [specs/001-user-auth/decision-record.md](/specs/001-user-auth/decision-record.md) for the full decision record.
+>
+> This document is preserved for historical reference.
 
 ## Decision
 

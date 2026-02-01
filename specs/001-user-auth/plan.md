@@ -2,6 +2,9 @@
 
 **Branch**: `001-user-auth` | **Date**: 2026-01-31 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/001-user-auth/spec.md`
+**Status**: REVISED
+
+> **Note (2026-01-31)**: This plan has been revised. The MEK/KEK/recovery passphrase architecture (Phases 1-2, 4-5) has been simplified to use Supabase's built-in encryption at rest. See [decision-record.md](./decision-record.md) for the full rationale.
 
 ## Summary
 

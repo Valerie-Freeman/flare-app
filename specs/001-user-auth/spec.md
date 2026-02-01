@@ -2,8 +2,10 @@
 
 **Feature Branch**: `001-user-auth`
 **Created**: 2026-01-31
-**Status**: Draft
+**Status**: Revised
 **Input**: User description: "Create a specification for user Authentication. Please refer to PRD.md"
+
+> **Note (2026-01-31)**: This specification has been revised. User Stories 3-5 originally included recovery passphrase requirements which have been removed after research determined that client-side encryption with recovery passphrases is over-engineered for Flare's use case. See [decision-record.md](./decision-record.md) for details.
 
 ## Overview
 

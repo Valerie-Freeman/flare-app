@@ -1,19 +1,14 @@
 import { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, TextInput, Button, HelperText, Card, Checkbox } from 'react-native-paper';
+import { StyleSheet, ScrollView } from 'react-native';
+import { Text, TextInput, Button, HelperText } from 'react-native-paper';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
-import * as Clipboard from 'expo-clipboard';
 import { signUp } from '../../src/services/auth';
 
 export default function SignUpScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [step, setStep] = useState('form'); // 'form' | 'passphrase' | 'confirm'
-  const [recoveryPassphrase, setRecoveryPassphrase] = useState('');
-  const [passphraseConfirmed, setPassphraseConfirmed] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const {
     control,
@@ -45,9 +40,8 @@ export default function SignUpScreen() {
     setError('');
 
     try {
-      const { passphrase } = await signUp(data.email, data.password);
-      setRecoveryPassphrase(passphrase);
-      setStep('passphrase');
+      await signUp(data.email, data.password);
+      router.replace('/(app)');
     } catch (err) {
       if (err.message?.includes('already registered')) {
         setError('An account with this email already exists');
@@ -59,85 +53,16 @@ export default function SignUpScreen() {
     }
   };
 
-  const copyPassphrase = async () => {
-    await Clipboard.setStringAsync(recoveryPassphrase);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleConfirmAndContinue = () => {
-    if (passphraseConfirmed) {
-      router.replace('/(app)');
-    }
-  };
-
-  if (step === 'passphrase') {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text variant="headlineMedium" style={styles.title}>
-            Save Your Recovery Passphrase
-          </Text>
-
-          <Text variant="bodyMedium" style={styles.warning}>
-            Write down these 6 words and store them safely. You will need them to recover your account if you forget your password.
-          </Text>
-
-          <Card style={styles.passphraseCard}>
-            <Card.Content>
-              <Text variant="titleLarge" style={styles.passphrase}>
-                {recoveryPassphrase}
-              </Text>
-            </Card.Content>
-          </Card>
-
-          <Button
-            mode="outlined"
-            onPress={copyPassphrase}
-            style={styles.copyButton}
-            icon={copied ? 'check' : 'content-copy'}
-          >
-            {copied ? 'Copied!' : 'Copy to Clipboard'}
-          </Button>
-
-          <View style={styles.checkboxRow}>
-            <Checkbox
-              status={passphraseConfirmed ? 'checked' : 'unchecked'}
-              onPress={() => setPassphraseConfirmed(!passphraseConfirmed)}
-            />
-            <Text
-              variant="bodyMedium"
-              style={styles.checkboxLabel}
-              onPress={() => setPassphraseConfirmed(!passphraseConfirmed)}
-            >
-              I have saved my recovery passphrase in a safe place
-            </Text>
-          </View>
-
-          <Button
-            mode="contained"
-            onPress={handleConfirmAndContinue}
-            disabled={!passphraseConfirmed}
-            style={styles.button}
-            contentStyle={styles.buttonContent}
-          >
-            Continue to App
-          </Button>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text variant="headlineMedium" style={styles.title}>
+        <Text variant='headlineMedium' style={styles.title}>
           Create Account
         </Text>
 
         <Controller
           control={control}
-          name="email"
+          name='email'
           rules={{
             required: 'Email is required',
             pattern: {
@@ -147,56 +72,56 @@ export default function SignUpScreen() {
           }}
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              label="Email"
-              mode="outlined"
+              label='Email'
+              mode='outlined'
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
+              keyboardType='email-address'
+              autoCapitalize='none'
+              autoComplete='email'
               style={styles.input}
               error={!!errors.email}
             />
           )}
         />
         {errors.email && (
-          <HelperText type="error">{errors.email.message}</HelperText>
+          <HelperText type='error'>{errors.email.message}</HelperText>
         )}
 
         <Controller
           control={control}
-          name="password"
+          name='password'
           rules={{
             required: 'Password is required',
             validate: validatePassword,
           }}
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              label="Password"
-              mode="outlined"
+              label='Password'
+              mode='outlined'
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
               secureTextEntry
-              autoComplete="password-new"
+              autoComplete='password-new'
               style={styles.input}
               error={!!errors.password}
             />
           )}
         />
         {errors.password && (
-          <HelperText type="error">{errors.password.message}</HelperText>
+          <HelperText type='error'>{errors.password.message}</HelperText>
         )}
 
         <Controller
           control={control}
-          name="confirmPassword"
+          name='confirmPassword'
           rules={{ required: 'Please confirm your password' }}
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              label="Confirm Password"
-              mode="outlined"
+              label='Confirm Password'
+              mode='outlined'
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
@@ -207,17 +132,17 @@ export default function SignUpScreen() {
           )}
         />
         {errors.confirmPassword && (
-          <HelperText type="error">{errors.confirmPassword.message}</HelperText>
+          <HelperText type='error'>{errors.confirmPassword.message}</HelperText>
         )}
 
-        <Text variant="bodySmall" style={styles.requirements}>
+        <Text variant='bodySmall' style={styles.requirements}>
           Password must be at least 8 characters with uppercase, lowercase, and a digit
         </Text>
 
-        {error ? <HelperText type="error">{error}</HelperText> : null}
+        {error ? <HelperText type='error'>{error}</HelperText> : null}
 
         <Button
-          mode="contained"
+          mode='contained'
           onPress={handleSubmit(onSubmit)}
           loading={isLoading}
           disabled={isLoading}
@@ -228,7 +153,7 @@ export default function SignUpScreen() {
         </Button>
 
         <Button
-          mode="text"
+          mode='text'
           onPress={() => router.back()}
           style={styles.linkButton}
         >
@@ -267,29 +192,5 @@ const styles = StyleSheet.create({
   },
   linkButton: {
     marginTop: 10,
-  },
-  warning: {
-    marginBottom: 20,
-    textAlign: 'center',
-    color: '#B00020',
-  },
-  passphraseCard: {
-    marginVertical: 20,
-  },
-  passphrase: {
-    textAlign: 'center',
-    fontFamily: 'monospace',
-    letterSpacing: 1,
-  },
-  copyButton: {
-    marginBottom: 20,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  checkboxLabel: {
-    flex: 1,
   },
 });

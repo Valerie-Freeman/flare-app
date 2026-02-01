@@ -28,7 +28,7 @@ export default function ForgotPasswordScreen() {
     try {
       await resetPassword(data.email);
       setSuccess(true);
-    } catch (err) {
+    } catch {
       setError('Failed to send reset email. Please try again.');
     } finally {
       setIsLoading(false);
@@ -39,17 +39,14 @@ export default function ForgotPasswordScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.successContent}>
-          <Text variant="headlineMedium" style={styles.title}>
+          <Text variant='headlineMedium' style={styles.title}>
             Check Your Email
           </Text>
-          <Text variant="bodyLarge" style={styles.successText}>
-            We sent a password reset link to your email. Click the link to reset your password.
-          </Text>
-          <Text variant="bodyMedium" style={styles.noteText}>
-            After resetting your password, you will need your recovery passphrase to restore access to your data.
+          <Text variant='bodyLarge' style={styles.successText}>
+            We sent a password reset link to your email. Click the link to reset your password, then sign in with your new password.
           </Text>
           <Button
-            mode="contained"
+            mode='contained'
             onPress={() => router.replace('/(auth)/sign-in')}
             style={styles.button}
             contentStyle={styles.buttonContent}
@@ -64,17 +61,17 @@ export default function ForgotPasswordScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text variant="headlineMedium" style={styles.title}>
+        <Text variant='headlineMedium' style={styles.title}>
           Reset Password
         </Text>
 
-        <Text variant="bodyMedium" style={styles.description}>
+        <Text variant='bodyMedium' style={styles.description}>
           Enter your email address and we will send you a link to reset your password.
         </Text>
 
         <Controller
           control={control}
-          name="email"
+          name='email'
           rules={{
             required: 'Email is required',
             pattern: {
@@ -84,27 +81,27 @@ export default function ForgotPasswordScreen() {
           }}
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              label="Email"
-              mode="outlined"
+              label='Email'
+              mode='outlined'
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
+              keyboardType='email-address'
+              autoCapitalize='none'
+              autoComplete='email'
               style={styles.input}
               error={!!errors.email}
             />
           )}
         />
         {errors.email && (
-          <HelperText type="error">{errors.email.message}</HelperText>
+          <HelperText type='error'>{errors.email.message}</HelperText>
         )}
 
-        {error ? <HelperText type="error">{error}</HelperText> : null}
+        {error ? <HelperText type='error'>{error}</HelperText> : null}
 
         <Button
-          mode="contained"
+          mode='contained'
           onPress={handleSubmit(onSubmit)}
           loading={isLoading}
           disabled={isLoading}
@@ -115,7 +112,7 @@ export default function ForgotPasswordScreen() {
         </Button>
 
         <Button
-          mode="text"
+          mode='text'
           onPress={() => router.back()}
           style={styles.linkButton}
         >
@@ -150,13 +147,8 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   successText: {
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  noteText: {
     marginBottom: 30,
     textAlign: 'center',
-    opacity: 0.7,
   },
   input: {
     marginBottom: 5,

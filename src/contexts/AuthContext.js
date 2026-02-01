@@ -1,12 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { supabase } from '../services/supabase';
-import {
-  clearAllLocalAuthData,
-  getMEKFromStorage,
-  storeMEKLocally,
-  storeUserIdLocally,
-} from '../services/encryption';
+import { clearAllLocalAuthData } from '../services/encryption';
 
 const AuthContext = createContext({});
 
@@ -17,18 +12,15 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [needsRecoveryPassphrase, setNeedsRecoveryPassphrase] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
-  // Check network connectivity
+  // Check network connectivity using Supabase health check
   const checkNetwork = async () => {
     try {
-      const response = await fetch('https://www.google.com/generate_204', {
-        method: 'HEAD',
-        mode: 'no-cors',
-      });
-      setIsOnline(true);
-      return true;
+      // Use auth session check - doesn't require RLS permissions
+      const { error } = await supabase.auth.getSession();
+      setIsOnline(!error);
+      return !error;
     } catch {
       setIsOnline(false);
       return false;
@@ -64,20 +56,6 @@ export function AuthProvider({ children }) {
 
       if (event === 'SIGNED_OUT') {
         await clearAllLocalAuthData();
-        setNeedsRecoveryPassphrase(false);
-      }
-
-      if (event === 'PASSWORD_RECOVERY') {
-        // User clicked password reset link
-        setNeedsRecoveryPassphrase(true);
-      }
-
-      if (event === 'SIGNED_IN' && session) {
-        // Check if this is after a password reset
-        const pendingReset = session.user?.user_metadata?.password_reset_pending;
-        if (pendingReset) {
-          setNeedsRecoveryPassphrase(true);
-        }
       }
     });
 
@@ -89,24 +67,12 @@ export function AuthProvider({ children }) {
     await clearAllLocalAuthData();
   };
 
-  const clearRecoveryFlag = async () => {
-    setNeedsRecoveryPassphrase(false);
-    await supabase.auth.updateUser({
-      data: { password_reset_pending: false },
-    });
-  };
-
   const value = {
     session,
     isLoading,
     isOnline,
-    needsRecoveryPassphrase,
     signOut,
-    clearRecoveryFlag,
     checkNetwork,
-    storeMEKLocally,
-    getMEKFromStorage,
-    storeUserIdLocally,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

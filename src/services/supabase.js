@@ -22,6 +22,7 @@ const ExpoSecureStoreAdapter = {
       await SecureStore.setItemAsync(key, value);
     } catch (error) {
       console.error('SecureStore setItem error:', error);
+      throw error;
     }
   },
   removeItem: async (key) => {
@@ -29,6 +30,7 @@ const ExpoSecureStoreAdapter = {
       await SecureStore.deleteItemAsync(key);
     } catch (error) {
       console.error('SecureStore removeItem error:', error);
+      throw error;
     }
   },
 };
