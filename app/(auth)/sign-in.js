@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
-import { StyleSheet, ScrollView } from 'react-native';
+import { useState, useRef } from 'react';
+import { StyleSheet, ScrollView, Keyboard } from 'react-native';
 import { Text, TextInput, Button, HelperText } from 'react-native-paper';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { signIn } from '../../src/services/auth';
@@ -9,13 +9,12 @@ import { signIn } from '../../src/services/auth';
 export default function SignInScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [formKey, setFormKey] = useState(0);
+  const passwordRef = useRef(null);
 
   const {
     control,
     handleSubmit,
     formState: { errors },
-    reset,
   } = useForm({
     defaultValues: {
       email: '',
@@ -23,22 +22,8 @@ export default function SignInScreen() {
     },
   });
 
-  // Workaround for iOS Keychain autofill bug with React Native Paper TextInput.
-  // When iOS autofill populates credentials, it can leave the TextInput in an
-  // unresponsive state (yellow background, can't type). This happens because
-  // the native autofill bypasses React's controlled input state. Forcing a
-  // re-mount via key change when the screen regains focus clears this state.
-  useFocusEffect(
-    useCallback(() => {
-      return () => {
-        setFormKey((k) => k + 1);
-        reset();
-        setError('');
-      };
-    }, [reset])
-  );
-
   const onSubmit = async (data) => {
+    Keyboard.dismiss();
     setIsLoading(true);
     setError('');
 
@@ -54,7 +39,7 @@ export default function SignInScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView key={formKey} contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text variant='headlineMedium' style={styles.title}>
           Sign In
         </Text>
@@ -82,6 +67,8 @@ export default function SignInScreen() {
               textContentType='emailAddress'
               style={styles.input}
               error={!!errors.email}
+              submitBehavior="submit"
+              onSubmitEditing={() => passwordRef.current?.focus()}
             />
           )}
         />
@@ -95,16 +82,19 @@ export default function SignInScreen() {
           rules={{ required: 'Password is required' }}
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
+              ref={passwordRef}
               label='Password'
               mode='outlined'
               onBlur={onBlur}
-              onChangeText={(text) => onChange(text)}
+              onChangeText={onChange}
               value={value}
               secureTextEntry
               autoComplete='password'
               textContentType='password'
               style={styles.input}
               error={!!errors.password}
+              submitBehavior="submit"
+              onSubmitEditing={handleSubmit(onSubmit)}
             />
           )}
         />

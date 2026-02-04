@@ -1,14 +1,16 @@
-import { useState } from 'react';
-import { StyleSheet, ScrollView } from 'react-native';
-import { Text, TextInput, Button, HelperText } from 'react-native-paper';
-import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useForm, Controller } from 'react-hook-form';
-import { signUp } from '../../src/services/auth';
+import { useState, useRef } from "react"
+import { StyleSheet, ScrollView, Keyboard } from "react-native"
+import { Text, TextInput, Button, HelperText } from "react-native-paper"
+import { router } from "expo-router"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { useForm, Controller } from "react-hook-form"
+import { signUp } from "../../src/services/auth"
 
 export default function SignUpScreen() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const passwordRef = useRef(null)
+  const confirmPasswordRef = useRef(null)
 
   const {
     control,
@@ -16,133 +18,146 @@ export default function SignUpScreen() {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      email: '',
-      password: '',
-      confirmPassword: '',
+      email: "",
+      password: "",
+      confirmPassword: "",
     },
-  });
+  })
 
   const validatePassword = (value) => {
-    if (value.length < 8) return 'Password must be at least 8 characters';
-    if (!/[A-Z]/.test(value)) return 'Password must contain an uppercase letter';
-    if (!/[a-z]/.test(value)) return 'Password must contain a lowercase letter';
-    if (!/[0-9]/.test(value)) return 'Password must contain a digit';
-    return true;
-  };
+    if (value.length < 8) return "Password must be at least 8 characters"
+    if (!/[A-Z]/.test(value)) return "Password must contain an uppercase letter"
+    if (!/[a-z]/.test(value)) return "Password must contain a lowercase letter"
+    if (!/[0-9]/.test(value)) return "Password must contain a digit"
+    return true
+  }
 
   const onSubmit = async (data) => {
+    Keyboard.dismiss()
     if (data.password !== data.confirmPassword) {
-      setError('Passwords do not match');
-      return;
+      setError("Passwords do not match")
+      return
     }
 
-    setIsLoading(true);
-    setError('');
+    setIsLoading(true)
+    setError("")
 
     try {
-      await signUp(data.email, data.password);
-      router.replace('/(app)');
+      await signUp(data.email, data.password)
+      router.replace("/(app)")
     } catch (err) {
-      if (err.message?.includes('already registered')) {
-        setError('An account with this email already exists');
+      if (err.message?.includes("already registered")) {
+        setError("An account with this email already exists")
       } else {
-        setError(err.message || 'Failed to create account');
+        setError(err.message || "Failed to create account")
       }
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text variant='headlineMedium' style={styles.title}>
+        <Text variant="headlineMedium" style={styles.title}>
           Create Account
         </Text>
 
         <Controller
           control={control}
-          name='email'
+          name="email"
           rules={{
-            required: 'Email is required',
+            required: "Email is required",
             pattern: {
               value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-              message: 'Invalid email format',
+              message: "Invalid email format",
             },
           }}
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              label='Email'
-              mode='outlined'
+              label="Email"
+              mode="outlined"
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
-              keyboardType='email-address'
-              autoCapitalize='none'
-              autoComplete='email'
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
               style={styles.input}
               error={!!errors.email}
+              submitBehavior="submit"
+              onSubmitEditing={() => passwordRef.current?.focus()}
             />
           )}
         />
         {errors.email && (
-          <HelperText type='error'>{errors.email.message}</HelperText>
+          <HelperText type="error">{errors.email.message}</HelperText>
         )}
 
         <Controller
           control={control}
-          name='password'
+          name="password"
           rules={{
-            required: 'Password is required',
+            required: "Password is required",
             validate: validatePassword,
           }}
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              label='Password'
-              mode='outlined'
+              ref={passwordRef}
+              label="Password"
+              mode="outlined"
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
               secureTextEntry
-              autoComplete='password-new'
+              autoComplete="off"
+              textContentType="oneTimeCode"
               style={styles.input}
               error={!!errors.password}
+              submitBehavior="submit"
+              onSubmitEditing={() => confirmPasswordRef.current?.focus()}
             />
           )}
         />
         {errors.password && (
-          <HelperText type='error'>{errors.password.message}</HelperText>
+          <HelperText type="error">{errors.password.message}</HelperText>
         )}
 
         <Controller
           control={control}
-          name='confirmPassword'
-          rules={{ required: 'Please confirm your password' }}
+          name="confirmPassword"
+          rules={{ required: "Please confirm your password" }}
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              label='Confirm Password'
-              mode='outlined'
+              ref={confirmPasswordRef}
+              label="Confirm Password"
+              mode="outlined"
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
               secureTextEntry
+              autoComplete="off"
+              textContentType="oneTimeCode"
               style={styles.input}
               error={!!errors.confirmPassword}
+              submitBehavior="submit"
+              onSubmitEditing={handleSubmit(onSubmit)}
             />
           )}
         />
         {errors.confirmPassword && (
-          <HelperText type='error'>{errors.confirmPassword.message}</HelperText>
+          <HelperText type="error">{errors.confirmPassword.message}</HelperText>
         )}
 
-        <Text variant='bodySmall' style={styles.requirements}>
-          Password must be at least 8 characters with uppercase, lowercase, and a digit
+        <Text variant="bodySmall" style={styles.requirements}>
+          Password must be at least 8 characters with uppercase, lowercase, and
+          a digit
         </Text>
 
-        {error ? <HelperText type='error'>{error}</HelperText> : null}
+        {error ? <HelperText type="error">{error}</HelperText> : null}
 
         <Button
-          mode='contained'
+          mode="contained"
           onPress={handleSubmit(onSubmit)}
           loading={isLoading}
           disabled={isLoading}
@@ -153,7 +168,7 @@ export default function SignUpScreen() {
         </Button>
 
         <Button
-          mode='text'
+          mode="text"
           onPress={() => router.back()}
           style={styles.linkButton}
         >
@@ -161,7 +176,7 @@ export default function SignUpScreen() {
         </Button>
       </ScrollView>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -174,7 +189,7 @@ const styles = StyleSheet.create({
   },
   title: {
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
   },
   input: {
     marginBottom: 5,
@@ -193,4 +208,4 @@ const styles = StyleSheet.create({
   linkButton: {
     marginTop: 10,
   },
-});
+})
