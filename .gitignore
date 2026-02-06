@@ -54,3 +54,6 @@ logs/
 
 # Temporary files
 *.tmp
+
+# Local tool configs
+.mcp.json
