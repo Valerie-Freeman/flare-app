@@ -314,15 +314,20 @@ DECLARE
     recent_failures INTEGER;
     lockout_until TIMESTAMP WITH TIME ZONE;
 BEGIN
-    -- Count failed attempts in the last 15 minutes
+    -- Count failed attempts in the last 15 minutes, but only since the last successful login
     SELECT COUNT(*)
     INTO recent_failures
     FROM login_attempts
     WHERE email = LOWER(p_email)
       AND success = FALSE
-      AND attempted_at > NOW() - INTERVAL '15 minutes';
+      AND attempted_at > NOW() - INTERVAL '15 minutes'
+      AND attempted_at > COALESCE(
+        (SELECT MAX(attempted_at) FROM login_attempts
+         WHERE email = LOWER(p_email) AND success = TRUE),
+        '1970-01-01'::timestamp with time zone
+      );
 
-    -- Allow if fewer than 5 failures in the window
+    -- Allow if fewer than 5 failures since last success
     RETURN recent_failures < 5;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -353,12 +358,18 @@ DECLARE
     recent_failures INTEGER;
     lockout_end TIMESTAMP WITH TIME ZONE;
 BEGIN
+    -- Count failures since last successful login
     SELECT COUNT(*), MAX(attempted_at)
     INTO recent_failures, last_failure
     FROM login_attempts
     WHERE email = LOWER(p_email)
       AND success = FALSE
-      AND attempted_at > NOW() - INTERVAL '15 minutes';
+      AND attempted_at > NOW() - INTERVAL '15 minutes'
+      AND attempted_at > COALESCE(
+        (SELECT MAX(attempted_at) FROM login_attempts
+         WHERE email = LOWER(p_email) AND success = TRUE),
+        '1970-01-01'::timestamp with time zone
+      );
 
     IF recent_failures >= 5 AND last_failure IS NOT NULL THEN
         lockout_end := last_failure + INTERVAL '15 minutes';
