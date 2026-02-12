@@ -2,14 +2,17 @@
 
 **Feature**: 001-user-auth
 **Date**: 2026-01-31
+**Revised**: 2026-02-06
+
+> **Note (2026-02-06)**: Revised to remove `user_keys` table and MEK/recovery passphrase architecture. See [decision-record.md](./decision-record.md) for details.
 
 ## Entity Relationship Overview
 
 ```
 ┌─────────────────────┐         ┌─────────────────────┐
-│    auth.users       │         │     user_keys       │
-│  (Supabase managed) │────────▶│  (encryption keys)  │
-└─────────────────────┘    1:1  └─────────────────────┘
+│    auth.users       │         │   login_attempts    │
+│  (Supabase managed) │────────▶│   (rate limiting)   │
+└─────────────────────┘   1:N   └─────────────────────┘
 ```
 
 ## Entities
@@ -28,39 +31,27 @@
 | email_confirmed_at | TIMESTAMP | NULLABLE | Email verification timestamp |
 | created_at | TIMESTAMP | NOT NULL | Account creation time |
 | updated_at | TIMESTAMP | NOT NULL | Last update time |
-| raw_user_meta_data | JSONB | NULLABLE | Custom metadata (used for lockout tracking) |
-
-**Metadata Fields (stored in raw_user_meta_data)**:
-- `failed_login_attempts`: INTEGER - Count of consecutive failed login attempts
-- `lockout_until`: TIMESTAMP - When lockout expires (null if not locked)
-- `password_reset_pending`: BOOLEAN - True if user needs to enter recovery passphrase
-- `recovery_passphrase_confirmed`: BOOLEAN - Whether user confirmed saving passphrase
 
 ---
 
-### 2. user_keys
+### 2. login_attempts
 
-**Description**: Stores encrypted Master Encryption Keys (MEK) for each user. Each MEK is encrypted twice: once with the password-derived key and once with the recovery passphrase-derived key.
+**Description**: Tracks login attempts per email for server-side rate limiting. Used by the `check_login_allowed()` database function to enforce lockout after repeated failures.
 
 | Field | Type | Constraints | Description |
 |-------|------|-------------|-------------|
 | id | UUID | PK, DEFAULT uuid_generate_v4() | Primary key |
-| user_id | UUID | FK → auth.users(id), UNIQUE, NOT NULL | Owner of the keys |
-| encrypted_mek_password | TEXT | NOT NULL | MEK encrypted with password-derived KEK |
-| encrypted_mek_recovery | TEXT | NOT NULL | MEK encrypted with recovery-passphrase-derived KEK |
-| password_salt | TEXT | NOT NULL | Salt for PBKDF2 password derivation |
-| recovery_salt | TEXT | NOT NULL | Salt for PBKDF2 recovery passphrase derivation |
-| created_at | TIMESTAMP | NOT NULL, DEFAULT now() | Record creation time |
-| updated_at | TIMESTAMP | NOT NULL, DEFAULT now() | Last update time |
+| email | TEXT | NOT NULL | Email address of the attempt |
+| attempted_at | TIMESTAMPTZ | DEFAULT now() | When the attempt occurred |
+| ip_address | TEXT | NULLABLE | IP address of the attempt |
+| success | BOOLEAN | DEFAULT false | Whether the attempt succeeded |
+| created_at | TIMESTAMPTZ | DEFAULT now() | Record creation time |
 
 **Indexes**:
-- `user_keys_user_id_idx` ON user_id (UNIQUE)
+- `login_attempts_email_idx` ON email
+- `login_attempts_email_attempted_at_idx` ON (email, attempted_at)
 
-**RLS Policies**:
-- SELECT: `auth.uid() = user_id`
-- INSERT: `auth.uid() = user_id`
-- UPDATE: `auth.uid() = user_id`
-- DELETE: `auth.uid() = user_id`
+**Note**: This table intentionally does NOT have RLS enabled. It is accessed by database functions during the login flow before a user is authenticated.
 
 ---
 
@@ -83,7 +74,7 @@
          │    attempts    │      elapsed       │
          │                ▼                     │
          │         ┌──────────────┐             │
-         │         │    Locked    │─────────────┘
+         │         │ Rate Limited │─────────────┘
          │         └──────────────┘
          │
          │ Password reset initiated
@@ -92,7 +83,7 @@
   │  Password Reset    │
   │     Pending        │
   └─────────┬──────────┘
-            │ Recovery passphrase entered
+            │ User sets new password via email link
             ▼
      ┌──────────────┐
      │    Active    │
@@ -127,51 +118,44 @@
 - At least one digit (0-9)
 - No maximum length restriction (handled by Supabase)
 
-### Recovery Passphrase
-- Exactly 6 words from BIP39 English word list
-- Words separated by single space
-- Case-insensitive comparison (stored/compared lowercase)
-
-### Failed Login Attempts
-- Integer >= 0
-- Reset to 0 on successful login
-- Lockout triggered at >= 5
-
-### Lockout Duration
-- 15 minutes from lockout trigger
-- Nullable (null = not locked)
+### Rate Limiting
+- Lockout triggered after 5 consecutive failed attempts within 15 minutes
+- Lockout duration: 15 minutes from last failed attempt
+- Successful login resets the failed attempt count
 
 ---
 
 ## Data Lifecycle
 
 ### On User Registration
-1. Create auth.users record (Supabase Auth)
-2. Generate MEK (256-bit random)
-3. Generate recovery passphrase (6 BIP39 words)
-4. Derive password KEK and recovery KEK using PBKDF2
-5. Encrypt MEK with both KEKs
-6. Create user_keys record with encrypted MEKs and salts
+1. Create auth.users record via Supabase Auth
+2. User profile created atomically via database trigger (`on_auth_user_created`)
+3. Session tokens stored in expo-secure-store
+
+### On Sign In
+1. Check rate limiting via `check_login_allowed()` database function
+2. Authenticate via Supabase Auth
+3. Record login attempt (success/failure) in `login_attempts`
+4. On success: store session tokens in expo-secure-store
+5. On failure: increment attempt count; lock after 5 failures
 
 ### On Password Reset
-1. Supabase Auth resets password
-2. Set password_reset_pending = true in user metadata
-3. On next sign-in, prompt for recovery passphrase
-4. Decrypt MEK using recovery KEK
-5. Derive new password KEK with new password
-6. Re-encrypt MEK with new password KEK
-7. Update user_keys.encrypted_mek_password
-8. Set password_reset_pending = false
+1. User requests reset via email
+2. Supabase sends reset link to `flare://reset-password`
+3. User taps link, app opens reset-password screen
+4. User enters new password
+5. Supabase Auth updates password
+6. User can sign in normally with new password
 
 ### On Sign Out
 1. Clear local session (Supabase client)
-2. Clear MEK from expo-secure-store
+2. Clear user ID from expo-secure-store
 3. Clear any cached user data
 
 ### On Account Deletion (Future)
-1. Delete user_keys record
-2. Delete auth.users record (cascades through Supabase)
-3. Note: Encrypted health data becomes unrecoverable (by design)
+1. Delete user data (cascades through Supabase)
+2. Delete auth.users record
+3. Login attempts for that email remain for audit purposes
 
 ---
 
@@ -182,10 +166,9 @@
 | Key | Type | Description |
 |-----|------|-------------|
 | `supabase.auth.token` | JSON | Supabase session (access + refresh tokens) |
-| `flare.mek` | String | Decrypted MEK (hex-encoded) |
 | `flare.user_id` | String | Current user's UUID |
 
 **Security Notes**:
 - All keys stored in device keychain (iOS Keychain / Android Keystore)
 - Cleared on sign out
-- MEK should never be logged or transmitted
+- Session tokens should never be logged or transmitted outside Supabase SDK

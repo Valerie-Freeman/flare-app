@@ -4,25 +4,24 @@
 **Input**: Feature specification from `/specs/001-user-auth/spec.md`
 **Status**: REVISED
 
-> **Note (2026-01-31)**: This plan has been revised. The MEK/KEK/recovery passphrase architecture (Phases 1-2, 4-5) has been simplified to use Supabase's built-in encryption at rest. See [decision-record.md](./decision-record.md) for the full rationale.
+> **Note (2026-02-06)**: This plan has been revised to remove client-side encryption. Security is provided by Supabase's built-in AES-256 encryption at rest and server-side rate limiting. See [decision-record.md](./decision-record.md) for details.
 
 ## Summary
 
-Implement secure user authentication for the Flare health tracking app, including email/password signup, sign-in, sign-out, and password reset. The implementation must generate a Master Encryption Key (MEK) during signup, encrypted with both user password and a recovery passphrase, enabling data recovery after password reset. Uses Supabase Auth for authentication with expo-secure-store for local key storage.
+Implement secure user authentication for the Flare health tracking app, including email/password signup, sign-in, sign-out, and password reset. Uses Supabase Auth for authentication with expo-secure-store for secure token storage. Security is provided by Supabase's built-in AES-256 encryption at rest and server-side rate limiting.
 
 ## Technical Context
 
 **Language/Version**: JavaScript (ES2022+)
 **Primary Dependencies**:
 - @supabase/supabase-js (authentication)
-- expo-secure-store (secure key storage)
-- expo-crypto (encryption key generation)
+- expo-secure-store (secure token storage)
 - react-hook-form (form handling)
 - React Context API (auth state management)
 
 **Storage**:
-- Supabase PostgreSQL (user accounts, encrypted MEK)
-- expo-secure-store (local MEK storage on device)
+- Supabase PostgreSQL (user accounts, login attempts)
+- expo-secure-store (session tokens on device)
 
 **Testing**: Jest + React Native Testing Library
 **Target Platform**: iOS and Android via Expo (Managed Workflow)
@@ -37,20 +36,21 @@ Implement secure user authentication for the Flare health tracking app, includin
 
 | Principle | Status | Evidence |
 |-----------|--------|----------|
-| **I. Minimal Dependencies** | PASS | Uses only essential dependencies: Supabase (required for backend), expo-secure-store (required for security), expo-crypto (required for encryption), react-hook-form (approved in architecture). No extra libraries added. |
+| **I. Minimal Dependencies** | PASS | Uses only essential dependencies: Supabase (required for backend), expo-secure-store (required for token storage), react-hook-form (approved in architecture). No extra libraries added. |
 | **II. YAGNI** | PASS | Implements only MVP auth features. Social auth, 2FA, biometrics explicitly deferred to post-MVP. |
-| **III. Privacy & Data Security** | PASS | Client-side encryption with MEK, recovery passphrase for data recovery, expo-secure-store for key storage, Supabase RLS for data isolation. |
-| **IV. Human-in-the-Loop** | PASS | Plan requires approval before implementation. ADR will be created for encryption approach. |
-| **V. Clean & Simple UX** | PASS | Minimal auth screens (welcome, sign-in, sign-up, password reset). Clear error messages. Recovery passphrase display with copy functionality. |
+| **III. Privacy & Data Security** | PASS | Server-side AES-256 encryption at rest via Supabase, RLS for data isolation, server-side rate limiting. |
+| **IV. Human-in-the-Loop** | PASS | Plan requires approval before implementation. |
+| **V. Clean & Simple UX** | PASS | Minimal auth screens (welcome, sign-in, sign-up, password reset). Clear error messages. Standard email-based password reset. |
 
 **Security Requirements Check:**
-- [x] Client-side encryption using expo-crypto
-- [x] MEK stored encrypted with password AND recovery passphrase
-- [x] Secure storage via expo-secure-store
+- [x] Server-side encryption at rest (Supabase AES-256)
+- [x] Row-Level Security (RLS) policies on user data
+- [x] Secure token storage via expo-secure-store
+- [x] Server-side rate limiting for failed login attempts
 - [x] No logging of sensitive user data
 - [x] HTTPS for all network communication (Supabase default)
 
-**ADR Required**: Yes - Document encryption key management approach in `docs/adr/001-encryption-key-management.md`
+**ADR Reference**: See `docs/adr/001-encryption-key-management.md` (SUPERSEDED) for historical context on encryption approach decision.
 
 ## Project Structure
 
@@ -71,32 +71,26 @@ specs/001-user-auth/
 ### Source Code (repository root)
 
 ```text
-flare-mobile/
-├── src/
-│   ├── contexts/
-│   │   └── AuthContext.js       # Auth state provider
-│   ├── services/
-│   │   ├── supabase.js          # Supabase client config
-│   │   ├── auth.js              # Auth service functions
-│   │   └── encryption.js        # MEK generation and management
-│   └── utils/
-│       └── passphrase.js        # Recovery passphrase generation
-├── app/
-│   ├── _layout.js               # Root layout with auth provider
-│   ├── (auth)/
-│   │   ├── _layout.js           # Auth flow layout
-│   │   ├── welcome.js
-│   │   ├── sign-in.js
-│   │   ├── sign-up.js
-│   │   └── forgot-password.js
-│   └── (app)/
-│       ├── _layout.js           # Protected routes layout
-│       └── settings/
-│           └── security.js      # Security settings (passphrase management)
-└── __tests__/
-    └── services/
-        ├── auth.test.js
-        └── encryption.test.js
+src/
+├── contexts/
+│   └── AuthContext.js           # Auth state provider
+├── services/
+│   ├── supabase.js              # Supabase client config
+│   ├── auth.js                  # Auth service functions
+│   └── encryption.js            # Local storage helpers (user ID, session)
+app/
+├── _layout.js                   # Root layout with auth provider
+├── (auth)/
+│   ├── _layout.js               # Auth flow layout
+│   ├── welcome.js
+│   ├── sign-in.js
+│   ├── sign-up.js
+│   ├── forgot-password.js
+│   └── reset-password.js        # Deep link handler for password reset
+└── (app)/
+    ├── _layout.js               # Protected routes layout
+    └── settings/
+        └── security.js          # Security settings (change password)
 ```
 
 **Structure Decision**: Expo Router file-based routing with screen logic directly in route files (no separate screens layer). Auth screens in `(auth)` group, protected screens in `(app)` group. Services layer handles business logic, contexts manage global state.
@@ -106,33 +100,39 @@ flare-mobile/
 Implementation order based on technical dependencies:
 
 ### Phase 1: Infrastructure
-1. Create `user_keys` table in Supabase
-2. Set up RLS policies for `user_keys`
-3. Create Supabase client with secure storage adapter (`src/services/supabase.js`)
+1. Create `login_attempts` table in Supabase for rate limiting
+2. Create `check_login_allowed()` database function
+3. Set up RLS policies for user data
+4. Create Supabase client with secure storage adapter (`src/services/supabase.js`)
 
 ### Phase 2: Core Services
-4. Encryption service - MEK generation, PBKDF2, encrypt/decrypt (`src/services/encryption.js`)
-5. Passphrase utility - BIP39 word generation (`src/utils/passphrase.js`)
-6. Auth service - Supabase auth wrapper + key management (`src/services/auth.js`)
+5. Local storage service - user ID and session helpers (`src/services/encryption.js`)
+6. Auth service - Supabase auth wrapper + rate limiting (`src/services/auth.js`)
 
 ### Phase 3: State Management
 7. AuthContext - session state, auth listener (`src/contexts/AuthContext.js`)
 
 ### Phase 4: P1 Screens
 8. Welcome screen (`app/(auth)/welcome.js`)
-9. Sign Up screen with passphrase display (`app/(auth)/sign-up.js`)
-10. Sign In screen (`app/(auth)/sign-in.js`)
+9. Sign Up screen (`app/(auth)/sign-up.js`)
+10. Sign In screen with rate limiting feedback (`app/(auth)/sign-in.js`)
 11. Root layout with auth provider (`app/_layout.js`)
 
 ### Phase 5: P2 Screens
 12. Forgot Password screen (`app/(auth)/forgot-password.js`)
-13. Password reset deep link handler
-14. Recovery passphrase entry (after password reset)
-15. Sign Out action
+13. Reset Password screen with deep link handler (`app/(auth)/reset-password.js`)
+14. Sign Out action
 
 ### Phase 6: Polish
-16. Account lockout logic (failed attempt tracking)
+15. Security settings screen (`app/(app)/settings/security.js`)
 
 ## Complexity Tracking
 
 No constitution violations requiring justification. All dependencies are minimal and necessary for the feature requirements.
+
+## Security Notes
+
+- **Encryption at rest**: Handled by Supabase (AES-256) — no client-side encryption needed
+- **Rate limiting**: Server-side via `login_attempts` table and database function
+- **Password reset**: Standard email-based flow (no recovery passphrase)
+- **Token storage**: expo-secure-store for JWT tokens on device

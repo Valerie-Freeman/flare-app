@@ -1,6 +1,26 @@
 // Flare Database Schema
 // For use with dbdiagram.io
-// Version: 1.1 (MVP with Practices)
+// Version: 1.2 (MVP with Practices + Auth)
+
+// ============================================
+// AUTHENTICATION
+// ============================================
+
+Table login_attempts {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  email text [not null]
+  attempted_at timestamptz [default: `now()`]
+  ip_address text
+  success boolean [default: false]
+  created_at timestamptz [default: `now()`]
+
+  indexes {
+    email
+    (email, attempted_at)
+  }
+
+  note: 'Tracks login attempts for rate limiting and security monitoring'
+}
 
 // ============================================
 // CATEGORY HIERARCHIES
@@ -298,6 +318,10 @@ Table experiments {
 // ============================================
 // TABLE GROUPS FOR VISUALIZATION
 // ============================================
+
+TableGroup authentication {
+  login_attempts
+}
 
 TableGroup categories {
   symptom_categories

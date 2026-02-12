@@ -44,9 +44,8 @@ This document outlines the technical architecture and key technology decisions f
 
 | Category | Technology | Purpose |
 |----------|-----------|---------|
-| **Encryption** | expo-crypto | Client-side encryption for sensitive data |
-| **Secure Storage** | expo-secure-store | Encryption keys stored in device keychain |
-| **Key Management** | PBKDF2 + Recovery Passphrase | Hybrid approach - password + recovery key |
+| **Secure Storage** | expo-secure-store | Session tokens stored in device keychain |
+| **Encryption** | Supabase (AES-256) | Server-side encryption at rest |
 
 ### Notifications & Background
 
@@ -64,13 +63,11 @@ User Action
     ↓
 Component (with React Hook Form)
     ↓
-[Encryption Layer] (for sensitive fields)
-    ↓
 TanStack Query Mutation
     ↓
-Supabase Client (with RLS)
+Supabase Client (with RLS + JWT)
     ↓
-PostgreSQL Database
+PostgreSQL Database (encrypted at rest)
     ↓
 TanStack Query cache invalidation
     ↓
@@ -99,25 +96,21 @@ UI Update (automatic re-render)
 5. RLS policies enforce data access at database level
 6. Tokens auto-refresh before expiration
 
-### Encryption Strategy
+### Security Strategy
 
-**What gets encrypted (client-side before Supabase):**
-- Symptom notes
-- Practice notes
-- Journal entries
-- Any user-entered free text
+**Encryption at Rest:**
+- All user data encrypted by Supabase using AES-256
+- Encryption handled transparently at database level
+- No client-side encryption required (see [decision-record.md](../specs/001-user-auth/decision-record.md))
 
-**What stays plaintext (needed for queries/analysis):**
-- Symptom types, severity, timestamps
-- Practice names, completion status
-- Metric values
-- User IDs, dates
+**Data in Transit:**
+- HTTPS/TLS for all API calls (Supabase default)
 
-**Key Management:**
-- Master Encryption Key (MEK) generated on signup
-- MEK encrypted with user password AND recovery passphrase
-- Encrypted MEK stored in Supabase
-- Recovery passphrase enables password reset without data loss
+**Access Control:**
+- Row-Level Security (RLS) policies enforce data isolation
+- JWT authentication for all requests
+- 7-day session validity with automatic refresh
+- Server-side rate limiting for login attempts
 
 ---
 
@@ -182,12 +175,12 @@ Return to mobile app
 
 ## Data Security
 
-### Encryption Layers
+### Security Layers
 
-1. **At Rest (Supabase):** Sensitive text fields encrypted with MEK
-2. **In Transit:** HTTPS for all API calls
-3. **For LLM Analysis:** Data temporarily decrypted server-side, sent to OpenAI
-4. **Key Storage:** MEK stored encrypted in Supabase, decryption key in device keychain
+1. **At Rest:** All data encrypted by Supabase (AES-256)
+2. **In Transit:** HTTPS/TLS for all API calls
+3. **For LLM Analysis:** Data anonymized before sending to OpenAI (user IDs and absolute timestamps removed)
+4. **Access Control:** Row-Level Security (RLS) policies isolate user data
 
 ### Row-Level Security (RLS)
 
@@ -251,7 +244,7 @@ All user data tables have RLS policies enforcing:
 | **Form Management** | React Hook Form | Less boilerplate, better performance |
 | **Backend** | Supabase | Managed PostgreSQL + Auth + RLS |
 | **Auth** | Supabase Auth + JWT | Industry standard, automatic token refresh |
-| **Encryption** | Hybrid (password + recovery key) | Balances security with recoverability |
+| **Encryption** | Supabase AES-256 at rest | Industry standard, no client-side complexity |
 | **AI Framework** | FastAPI + LangChain | Fast, modern, provider-agnostic |
 | **LLM** | OpenAI GPT-4o-mini | Best cost/performance for structured output |
 | **Deployment** | EAS + Supabase Cloud + DigitalOcean | Low cost, managed services |
@@ -286,6 +279,43 @@ pip install fastapi uvicorn langchain openai supabase python-jose
 - SUPABASE_SERVICE_ROLE_KEY
 - SUPABASE_JWT_SECRET
 - OPENAI_API_KEY
+
+---
+
+## Technical Evolution (Post-MVP)
+
+Items discovered during implementation that should be addressed as the application scales. These are not current requirements — they represent known evolution paths for when traffic or complexity warrants the investment.
+
+### Security & Auth
+
+| Item | Trigger | Approach |
+|------|---------|----------|
+| CAPTCHA on auth forms | Bot traffic or abuse detected | Supabase supports hCaptcha and Cloudflare Turnstile natively |
+| Rate limiting migration | Concurrent logins exceed DB comfort zone (~1000+/sec) | Move real-time enforcement to Upstash Redis via Edge Functions; keep DB for audit log |
+| Login attempt cleanup | Table growth at scale | Replace per-request DELETE with pg_cron scheduled job |
+| Deep link testing | Native build available | Password reset deep links (`flare://reset-password`) require EAS Build to test — see [decision-record.md](../specs/001-user-auth/decision-record.md#future-implementation-deep-linking-for-password-reset) |
+
+### Data & Search
+
+| Item | Trigger | Approach |
+|------|---------|----------|
+| pgvector / semantic search | Per-user data exceeds LLM context windows | Add pgvector extension in Supabase for embedding-based retrieval |
+| Database read replicas | Query latency from combined read/write load | Supabase Pro supports read replicas |
+
+### AI Service
+
+| Item | Trigger | Approach |
+|------|---------|----------|
+| LangGraph migration | Conversational agent features needed | Refactor LangChain chains to LangGraph for multi-turn interactions |
+| LLM provider evaluation | Cost optimization or capability needs | LangChain abstraction allows swapping providers without app changes |
+
+### Infrastructure
+
+| Item | Trigger | Approach |
+|------|---------|----------|
+| CI/CD pipeline | Team growth or deployment frequency | GitHub Actions for automated testing and deployment |
+| Infrastructure as Code | Multi-environment management | Terraform, Pulumi, or DigitalOcean App Spec |
+| Supabase Pro upgrade | >100 users or need for production SLA | $25/month for higher limits, support, and daily backups |
 
 ---
 
