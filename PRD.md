@@ -19,10 +19,25 @@
 - **Connectivity:** Online required (no offline-first architecture for MVP)
 
 ### Privacy & Security
-- **Data Storage:** Privacy-first with end-to-end encryption (client-side encryption before storing in Supabase)
+- **Data Storage:** Privacy-first with encryption at rest (Supabase AES-256) and in transit (TLS 1.2/1.3)
 - **Authentication:** Supabase Auth with row-level security (RLS)
 - **AI Processing:** Cloud AI with anonymization—strip identifying information before sending data to AI services
 - **Data Ownership:** Users can export all their data (PDF reports + raw JSON/CSV)
+
+#### Regulatory Context
+
+**HIPAA**: Does not apply to Flare. Per [HHS guidance](https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/access-right-health-apps-apis/index.html), HIPAA rules do not apply to health information that users voluntarily enter into apps not developed by or on behalf of covered entities. Flare collects user-entered symptoms, practices, and medications—not PHI from healthcare providers.
+
+**FTC Health Breach Notification Rule**: Applies to Flare. The [FTC rule](https://www.ftc.gov/business-guidance/resources/complying-ftcs-health-breach-notification-rule-0) requires health apps to notify users and the FTC within 60 days of a data breach. Penalties can reach $43,792 per violation per day.
+
+#### Industry Standards
+
+Based on analysis of comparable apps (Flo, period/health trackers), industry standard security for consumer health apps includes:
+- TLS for data in transit
+- AES-256 encryption at rest (server-side)
+- ISO 27001/27701 certifications (goal for production)
+
+Client-side end-to-end encryption with recovery passphrases is **not** industry standard for consumer health tracking apps and adds complexity without proportional benefit. See [specs/001-user-auth/decision-record.md](specs/001-user-auth/decision-record.md) for detailed research.
 
 ---
 
@@ -351,7 +366,7 @@ A three-tier architecture separating concerns:
 - **Primary data store:** Supabase PostgreSQL for all structured, time-series health data
 - **No vector database for MVP:** User data within a time period is sent directly to LLM for analysis. A single user's yearly data (~1,000-2,000 entries) fits within modern LLM context windows.
 - **Future consideration:** Add vector search (pgvector in Supabase or dedicated vector DB) if semantic search over long history becomes necessary
-- **Encryption:** Client-side encryption before storage for true E2E privacy
+- **Encryption:** Server-side encryption at rest (Supabase AES-256) + TLS in transit. See Privacy & Security section for rationale.
 
 ### AI/LLM Approach
 - Start with LangChain for structured report generation chains

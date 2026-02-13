@@ -287,6 +287,102 @@ CREATE INDEX idx_experiments_user_status ON experiments(user_id, status);
 CREATE INDEX idx_experiments_dates ON experiments(start_date, end_date);
 
 -- ============================================
+-- AUTHENTICATION & RATE LIMITING
+-- ============================================
+
+-- Login attempts for server-side rate limiting
+-- Tracks failed login attempts to prevent brute-force attacks
+CREATE TABLE login_attempts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email TEXT NOT NULL,
+    attempted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    ip_address TEXT,
+    success BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_login_attempts_email_time ON login_attempts(email, attempted_at DESC);
+CREATE INDEX idx_login_attempts_cleanup ON login_attempts(attempted_at);
+
+COMMENT ON TABLE login_attempts IS 'Server-side login attempt tracking for rate limiting';
+
+-- Function to check if login is allowed (rate limiting)
+-- Returns TRUE if login is allowed, FALSE if locked out
+CREATE OR REPLACE FUNCTION check_login_allowed(p_email TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+    recent_failures INTEGER;
+    lockout_until TIMESTAMP WITH TIME ZONE;
+BEGIN
+    -- Count failed attempts in the last 15 minutes, but only since the last successful login
+    SELECT COUNT(*)
+    INTO recent_failures
+    FROM login_attempts
+    WHERE email = LOWER(p_email)
+      AND success = FALSE
+      AND attempted_at > NOW() - INTERVAL '15 minutes'
+      AND attempted_at > COALESCE(
+        (SELECT MAX(attempted_at) FROM login_attempts
+         WHERE email = LOWER(p_email) AND success = TRUE),
+        '1970-01-01'::timestamp with time zone
+      );
+
+    -- Allow if fewer than 5 failures since last success
+    RETURN recent_failures < 5;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to record a login attempt
+CREATE OR REPLACE FUNCTION record_login_attempt(
+    p_email TEXT,
+    p_success BOOLEAN,
+    p_ip_address TEXT DEFAULT NULL
+)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO login_attempts (email, success, ip_address)
+    VALUES (LOWER(p_email), p_success, p_ip_address);
+
+    -- Clean up old attempts (older than 24 hours) to prevent table bloat
+    DELETE FROM login_attempts
+    WHERE attempted_at < NOW() - INTERVAL '24 hours';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to get remaining lockout time in seconds
+-- Returns 0 if not locked out, otherwise seconds until lockout expires
+CREATE OR REPLACE FUNCTION get_lockout_remaining(p_email TEXT)
+RETURNS INTEGER AS $$
+DECLARE
+    last_failure TIMESTAMP WITH TIME ZONE;
+    recent_failures INTEGER;
+    lockout_end TIMESTAMP WITH TIME ZONE;
+BEGIN
+    -- Count failures since last successful login
+    SELECT COUNT(*), MAX(attempted_at)
+    INTO recent_failures, last_failure
+    FROM login_attempts
+    WHERE email = LOWER(p_email)
+      AND success = FALSE
+      AND attempted_at > NOW() - INTERVAL '15 minutes'
+      AND attempted_at > COALESCE(
+        (SELECT MAX(attempted_at) FROM login_attempts
+         WHERE email = LOWER(p_email) AND success = TRUE),
+        '1970-01-01'::timestamp with time zone
+      );
+
+    IF recent_failures >= 5 AND last_failure IS NOT NULL THEN
+        lockout_end := last_failure + INTERVAL '15 minutes';
+        IF lockout_end > NOW() THEN
+            RETURN EXTRACT(EPOCH FROM (lockout_end - NOW()))::INTEGER;
+        END IF;
+    END IF;
+
+    RETURN 0;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
 -- UPDATED_AT TRIGGER FUNCTION
 -- ============================================
 
