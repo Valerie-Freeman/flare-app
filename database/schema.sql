@@ -264,27 +264,28 @@ CREATE INDEX idx_medication_logs_medication ON medication_logs(medication_id);
 CREATE INDEX idx_medication_logs_user_date ON medication_logs(user_id, taken_at DESC);
 
 -- ============================================
--- EXPERIMENTS
+-- EXPERIMENTS (Post-MVP)
 -- ============================================
-
-CREATE TABLE experiments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT,
-    start_date DATE NOT NULL,
-    end_date DATE,
-    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
-    practice_ids JSONB,                    -- related practices
-    target_symptoms JSONB,                 -- symptom_type_ids to monitor
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
-CREATE INDEX idx_experiments_user ON experiments(user_id);
-CREATE INDEX idx_experiments_user_status ON experiments(user_id, status);
-CREATE INDEX idx_experiments_dates ON experiments(start_date, end_date);
+-- Deferred to post-MVP. Schema preserved for future implementation.
+--
+-- CREATE TABLE experiments (
+--     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+--     user_id UUID NOT NULL,
+--     name TEXT NOT NULL,
+--     description TEXT,
+--     start_date DATE NOT NULL,
+--     end_date DATE,
+--     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
+--     practice_ids JSONB,                    -- related practices
+--     target_symptoms JSONB,                 -- symptom_type_ids to monitor
+--     notes TEXT,
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+--     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+-- );
+--
+-- CREATE INDEX idx_experiments_user ON experiments(user_id);
+-- CREATE INDEX idx_experiments_user_status ON experiments(user_id, status);
+-- CREATE INDEX idx_experiments_dates ON experiments(start_date, end_date);
 
 -- ============================================
 -- AUTHENTICATION & RATE LIMITING
@@ -407,9 +408,10 @@ CREATE TRIGGER update_medications_updated_at
     BEFORE UPDATE ON medications
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_experiments_updated_at
-    BEFORE UPDATE ON experiments
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Post-MVP: experiments trigger
+-- CREATE TRIGGER update_experiments_updated_at
+--     BEFORE UPDATE ON experiments
+--     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
 -- COMMENTS
@@ -428,7 +430,7 @@ COMMENT ON TABLE practice_symptoms IS 'Links practices to symptoms they are expe
 COMMENT ON TABLE medications IS 'User medications and supplements';
 COMMENT ON TABLE medication_symptoms IS 'Links medications to symptoms they are expected to help';
 COMMENT ON TABLE medication_logs IS 'Medication adherence records';
-COMMENT ON TABLE experiments IS 'User-defined experiments to test interventions';
+-- Post-MVP: COMMENT ON TABLE experiments IS 'User-defined experiments to test interventions';
 COMMENT ON TABLE body_locations IS 'Reference table for anatomical locations';
 
 COMMENT ON COLUMN practices.tracking_type IS 'metric: tracked via metrics table, completion: mark done/skipped';
