@@ -601,24 +601,9 @@ medication_logs (
 )
 ```
 
-### Experiments
+### Experiments (Post-MVP)
 
-```sql
-experiments (
-  id UUID PRIMARY KEY,
-  user_id UUID NOT NULL,
-  name TEXT NOT NULL,
-  description TEXT,
-  start_date DATE NOT NULL,
-  end_date DATE,
-  status TEXT DEFAULT 'active',        -- 'active', 'completed', 'cancelled'
-  lifestyle_choice_ids JSONB,          -- related lifestyle choices
-  target_symptoms JSONB,               -- symptom_type_ids to monitor
-  notes TEXT,
-  created_at TIMESTAMP DEFAULT now(),
-  updated_at TIMESTAMP DEFAULT now()
-)
-```
+*Deferred to post-MVP. See PRD.md Post-MVP Features section.*
 
 ---
 

@@ -229,22 +229,7 @@ See [Data Dictionary](docs/data-dictionary.md) for database schema details.
 
 ---
 
-### 7. Experiments & A/B Comparisons
-
-**Purpose:** Allow users to formally test lifestyle interventions and compare results.
-
-**Feature Details:**
-- Create named experiments (e.g., "Testing magnesium for 30 days")
-- Set start and end dates
-- Compare two different periods/approaches side by side
-- Comprehensive comparison across all tracked data:
-  - Symptom frequency and severity
-  - Journal-based wellness scores (mood, energy, sleep quality)
-  - Lifestyle adherence rates
-
----
-
-### 8. Reports & Analytics
+### 7. Reports & Analytics
 
 #### Graphs and Statistics
 **Purpose:** Quick visualization of symptom patterns over time.
@@ -291,7 +276,7 @@ See [Data Dictionary](docs/data-dictionary.md) for database schema details.
 
 ---
 
-### 9. Data Export
+### 8. Data Export
 
 **Purpose:** Ensure users own their health data.
 
@@ -303,6 +288,12 @@ See [Data Dictionary](docs/data-dictionary.md) for database schema details.
 ---
 
 ## Post-MVP Features (Future Roadmap)
+
+### Experiments & A/B Comparisons
+- Create named experiments (e.g., "Testing magnesium for 30 days")
+- Set start and end dates
+- Compare two different periods/approaches side by side
+- Comprehensive comparison across all tracked data (symptom frequency/severity, journal-based wellness scores, lifestyle adherence rates)
 
 ### Medication/Supplement Interaction Warnings
 - Integrate with drug interaction database

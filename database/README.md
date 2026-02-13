@@ -1,6 +1,6 @@
 # Flare Database Overview
 
-A health tracking database designed to help users log symptoms, track metrics, manage practices, and run personal experiments.
+A health tracking database designed to help users log symptoms, track metrics, and manage practices.
 
 ## Current Implementation Status
 
@@ -29,8 +29,6 @@ A health tracking database designed to help users log symptoms, track metrics, m
 │  medications ──────► medication_logs                            │
 │                                                                 │
 │  symptom_logs (standalone entries)                              │
-│                                                                 │
-│  experiments (ties practices to symptom monitoring)             │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -82,21 +80,7 @@ FROM medication_logs
 WHERE medication_id = ? AND taken_at > NOW() - INTERVAL '30 days';
 ```
 
-### 4. Experiments
-Users create experiments to test if a practice helps specific symptoms.
-
-```sql
--- Compare symptom severity before/during an experiment
-SELECT
-  AVG(sl.severity) FILTER (WHERE sl.started_at < e.start_date) as baseline,
-  AVG(sl.severity) FILTER (WHERE sl.started_at >= e.start_date) as during_experiment
-FROM experiments e
-CROSS JOIN LATERAL unnest(e.target_symptoms::uuid[]) as target_symptom_id
-JOIN symptom_logs sl ON sl.symptom_type_id = target_symptom_id
-WHERE e.id = ? AND sl.user_id = e.user_id;
-```
-
-### 5. Correlation Discovery
+### 4. Correlation Discovery
 Find relationships between practices and symptom changes.
 
 ```sql
