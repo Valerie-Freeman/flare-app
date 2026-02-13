@@ -58,6 +58,14 @@ module.exports = [
     },
   },
   {
+    files: ['**/*.test.{js,jsx}', '__tests__/**/*.{js,jsx}', '__mocks__/**/*.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
+    },
+  },
+  {
     ignores: [
       'node_modules/',
       '.expo/',

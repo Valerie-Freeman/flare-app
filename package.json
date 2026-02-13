@@ -34,10 +34,17 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
+    "@testing-library/react-native": "^13.3.3",
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "globals": "^17.3.0"
+    "globals": "^17.3.0",
+    "jest-expo": "^54.0.17",
+    "react-test-renderer": "^19.1.0"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "setupFilesAfterEnv": ["./jest.setup.js"]
   },
   "private": true
 }
