@@ -1,19 +1,21 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version Change: 1.3.0 → 1.4.0
+Version Change: 1.5.0 → 1.6.0
 Modified Principles: None
 Added Sections:
-  - Regulatory Compliance - New section documenting FTC Health Breach Notification Rule applicability and compliance posture
-Modified Sections: None
+  - Principle IX: Testing Philosophy
+Modified Sections:
+  - Development Workflow > Testing Requirements: Updated to reference Principle IX
+  - Governance > Compliance: Added "testing philosophy" to principle checklist
 Removed Sections: None
 Templates Requiring Updates:
   ✅ .specify/templates/plan-template.md - Constitution Check is dynamic, no changes needed
   ✅ .specify/templates/spec-template.md - No direct constitution references requiring update
-  ✅ .specify/templates/tasks-template.md - No direct constitution references requiring update
-Follow-up TODOs:
-  - Document incident response procedures before production launch (referenced in Regulatory Compliance)
-Reference: ADR-001 (SUPERSEDED) documents the decision to move from client-side to server-side encryption
+  ✅ .specify/templates/tasks-template.md - No direct constitution references requiring update (governance supersedes for critical paths)
+  ✅ .specify/templates/agent-file-template.md - No constitution references requiring update
+  ✅ .specify/templates/checklist-template.md - No constitution references requiring update
+Follow-up TODOs: None
 -->
 
 # Flare Project Constitution
@@ -60,6 +62,52 @@ Temporary workarounds are only permitted when:
 3. They are approved by the human developer with a stated remediation timeline
 
 **Rationale**: Hacky solutions compound over time, creating maintenance nightmares and fragile systems. Health applications require reliability and trust. Investing in proper architecture upfront reduces total cost of ownership and ensures the codebase remains comprehensible and evolvable.
+
+### VII. Single Source of Truth
+Every piece of knowledge, configuration, business rule, or data definition MUST have exactly one authoritative representation in the codebase. Duplication of logic, constants, validation rules, type definitions, or state is prohibited. When multiple parts of the system need the same information, they MUST reference the single authoritative source rather than maintaining independent copies.
+
+This principle applies to:
+- **Business logic**: Validation rules, calculations, and domain rules MUST be defined once and imported where needed
+- **Configuration**: Environment values, feature flags, and settings MUST originate from a single source
+- **Type/schema definitions**: Data shapes MUST be defined once (e.g., database schema drives API types drives UI types)
+- **Constants**: Magic numbers, string literals, and enumerations MUST be centralized
+- **State**: Application state for a given concern MUST live in one location, not be mirrored across components
+
+**Rationale**: Duplicated knowledge inevitably diverges. When a business rule exists in two places, one will be updated and the other forgotten, creating subtle bugs that are difficult to trace. A single authoritative source eliminates update anomalies, simplifies refactoring, and ensures consistency across the entire system.
+
+### VIII. Single Responsibility
+Every module, file, function, and component MUST have exactly one well-defined responsibility—one reason to change. When a unit of code accumulates multiple concerns, it MUST be decomposed into focused units with clear boundaries.
+
+This principle applies at every level:
+- **Functions**: Each function MUST perform one coherent operation. A function that validates, transforms, and persists data MUST be split into discrete steps.
+- **Files/Modules**: Each file MUST own one concern. A file containing both UI rendering and API communication MUST be separated.
+- **Components**: Each UI component MUST represent one visual/behavioral unit. A component handling layout, data fetching, and business logic MUST delegate non-UI concerns elsewhere.
+- **Services**: Each service MUST encapsulate one domain capability. An auth service MUST NOT also manage user profile preferences.
+
+**Rationale**: Units with multiple responsibilities become change magnets—modifications for one concern risk breaking the other. Focused units are easier to test, easier to name, easier to reuse, and easier to replace. This directly supports maintainability for a solo developer who must quickly understand and modify any part of the system.
+
+### IX. Testing Philosophy
+Tests MUST verify **behavior, not implementation**. Tests assert what the user sees and does—not internal component state, props, or implementation details. Tests MUST be resilient to refactoring: if the behavior does not change, the tests MUST NOT break.
+
+**Permitted test tooling**: `jest-expo` (preset) and `@testing-library/react-native` are the only testing dependencies. Jest's built-in mocking (`jest.mock`, `jest.fn`) is sufficient. No additional mocking libraries (Sinon, etc.), no snapshot testing plugins, and no E2E frameworks are permitted without explicit approval.
+
+**Testing priority order** (highest ROI first):
+1. **Services/business logic**: Pure functions and service modules—easiest to test, highest return on investment
+2. **Context/state management**: Integration-style tests verifying state transitions and side effects
+3. **Screen components**: User interactions, form validation, navigation flows—tested last
+
+**Critical path coverage**: Authentication, secure storage, and data encryption boundaries MUST always have test coverage regardless of feature scope.
+
+**Mocking boundaries**: Mocks are permitted ONLY at system boundaries:
+- **External services**: Supabase client
+- **Native modules**: `expo-secure-store`, device APIs
+- **Navigation**: `expo-router`
+
+Internal modules MUST NOT be mocked between each other. If a test requires mocking an internal module, that is a design signal—the code needs refactoring, not more mocks.
+
+**Test location**: Tests MUST live in `__tests__/` mirroring the `src/` structure (e.g., `__tests__/services/auth.test.js` for `src/services/auth.js`).
+
+**Rationale**: Testing philosophy is an extension of Architectural Quality (Principle VI)—hard-to-test code is poorly designed code. Tests serve as a design feedback mechanism. Behavior-based testing supports Single Responsibility (Principle VIII) by encouraging focused, independently testable units. Lean test tooling honors Minimal Dependencies (Principle I). Mandatory critical-path coverage enforces Privacy & Data Security (Principle III) by ensuring auth and encryption boundaries are validated continuously.
 
 ## Security & Privacy Requirements
 
@@ -137,8 +185,12 @@ ADRs should capture the decision, context, considered alternatives, and rational
 - No quick fixes or workarounds without explicit approval and remediation plan
 
 ### Testing Requirements
-- Core functionality must be testable
-- Critical paths (auth, data encryption, RLS policies) require validation
+Testing standards are governed by **Principle IX: Testing Philosophy**. In summary:
+
+- All code MUST be structured to be testable (single responsibility, clear boundaries)
+- Critical paths (auth, secure storage, data encryption boundaries) MUST have test coverage
+- Tests MUST verify behavior, not implementation details
+- Mocking is permitted only at system boundaries (Supabase, native modules, navigation)
 - AI service endpoints require integration testing
 
 ## Governance
@@ -152,11 +204,11 @@ This constitution supersedes all other project practices and documentation. All 
 4. Dependent templates and documentation updated to reflect changes
 
 ### Compliance
-All pull requests, code reviews, and implementation decisions must verify alignment with constitution principles. Any complexity added to the codebase must be explicitly justified against YAGNI, minimal dependencies, and architectural quality principles.
+All pull requests, code reviews, and implementation decisions must verify alignment with constitution principles. Any complexity added to the codebase must be explicitly justified against YAGNI, minimal dependencies, single source of truth, single responsibility, architectural quality, and testing philosophy principles.
 
 ### Versioning Policy
 - MAJOR: Backward-incompatible principle removals or redefinitions
 - MINOR: New principles added or material expansions to existing guidance
 - PATCH: Clarifications, wording improvements, non-semantic refinements
 
-**Version**: 1.4.0 | **Ratified**: 2026-01-30 | **Last Amended**: 2026-02-04
+**Version**: 1.6.0 | **Ratified**: 2026-01-30 | **Last Amended**: 2026-02-13
