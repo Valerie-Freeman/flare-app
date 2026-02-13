@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { supabase } from '../services/supabase';
 import { clearAllLocalAuthData } from '../services/encryption';
+import { signOut as authSignOut } from '../services/auth';
 
 const AuthContext = createContext({});
 
@@ -63,8 +64,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    await clearAllLocalAuthData();
+    await authSignOut();
   };
 
   const value = {
