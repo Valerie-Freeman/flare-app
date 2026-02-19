@@ -1,6 +1,6 @@
 -- Flare Database Schema
 -- PostgreSQL DDL for health tracking application
--- Version: 1.1 (MVP with Practices)
+-- Version: 1.2 (MVP with NLP columns)
 
 -- ============================================
 -- EXTENSIONS
@@ -126,6 +126,8 @@ CREATE TABLE symptom_logs (
     started_at TIMESTAMP WITH TIME ZONE NOT NULL,
     duration_minutes INTEGER,
     location_id UUID REFERENCES body_locations(id),
+    raw_input TEXT,
+    source TEXT DEFAULT 'manual' CHECK (source IN ('manual', 'nlp')),
     notes TEXT,
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
@@ -157,6 +159,8 @@ CREATE TABLE practices (
     active BOOLEAN DEFAULT true,
     started_at TIMESTAMP WITH TIME ZONE,
     ended_at TIMESTAMP WITH TIME ZONE,
+    raw_input TEXT,
+    source TEXT DEFAULT 'manual' CHECK (source IN ('manual', 'nlp')),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
@@ -177,7 +181,8 @@ CREATE TABLE metrics (
     value NUMERIC NOT NULL,
     recorded_at TIMESTAMP WITH TIME ZONE NOT NULL,
     practice_id UUID REFERENCES practices(id) ON DELETE SET NULL,
-    source TEXT DEFAULT 'manual' CHECK (source IN ('manual', 'journal', 'integration')),
+    raw_input TEXT,
+    source TEXT DEFAULT 'manual' CHECK (source IN ('manual', 'journal', 'integration', 'nlp')),
     notes TEXT,
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
@@ -196,6 +201,8 @@ CREATE TABLE practice_completions (
     practice_id UUID NOT NULL REFERENCES practices(id) ON DELETE CASCADE,
     completed_at TIMESTAMP WITH TIME ZONE NOT NULL,
     completed BOOLEAN DEFAULT true,        -- false = explicitly skipped
+    raw_input TEXT,
+    source TEXT DEFAULT 'manual' CHECK (source IN ('manual', 'nlp')),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
@@ -229,6 +236,8 @@ CREATE TABLE medications (
     active BOOLEAN DEFAULT true,
     started_at TIMESTAMP WITH TIME ZONE,
     ended_at TIMESTAMP WITH TIME ZONE,
+    raw_input TEXT,
+    source TEXT DEFAULT 'manual' CHECK (source IN ('manual', 'nlp')),
     notes TEXT,
     is_supplement BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
@@ -255,6 +264,8 @@ CREATE TABLE medication_logs (
     medication_id UUID NOT NULL REFERENCES medications(id) ON DELETE CASCADE,
     taken_at TIMESTAMP WITH TIME ZONE NOT NULL,
     taken BOOLEAN DEFAULT true,            -- false = skipped
+    raw_input TEXT,
+    source TEXT DEFAULT 'manual' CHECK (source IN ('manual', 'nlp')),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
@@ -436,4 +447,5 @@ COMMENT ON COLUMN practices.target_frequency IS 'Times per day for completion tr
 COMMENT ON COLUMN practices.frequency_details IS 'JSON for specific_days frequency, e.g., {"days": ["mon", "wed", "fri"]}';
 COMMENT ON COLUMN practices.reminder_times IS 'JSON array of times, e.g., ["08:00", "20:00"]';
 COMMENT ON COLUMN metrics.practice_id IS 'Links metric to practice when applicable';
-COMMENT ON COLUMN metrics.source IS 'manual: user entry, journal: from morning/evening journal, integration: external source';
+COMMENT ON COLUMN metrics.source IS 'manual: user entry, journal: from morning/evening journal, integration: external source, nlp: natural language input';
+COMMENT ON COLUMN metrics.raw_input IS 'Original NLP text preserved alongside structured extraction';

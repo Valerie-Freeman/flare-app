@@ -1,6 +1,6 @@
 // Flare Database Schema
 // For use with dbdiagram.io
-// Version: 1.2 (MVP with Practices + Auth)
+// Version: 1.3 (MVP with NLP columns)
 
 // ============================================
 // AUTHENTICATION
@@ -134,6 +134,8 @@ Table symptom_logs {
   started_at timestamp [not null]
   duration_minutes int
   location_id uuid [ref: > body_locations.id]
+  raw_input text
+  source text [default: 'manual', note: 'manual or nlp']
   notes text
   metadata jsonb [default: '{}']
   created_at timestamp [default: `now()`]
@@ -165,6 +167,8 @@ Table practices {
   active boolean [default: true]
   started_at timestamp
   ended_at timestamp
+  raw_input text
+  source text [default: 'manual', note: 'manual or nlp']
   notes text
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
@@ -185,7 +189,8 @@ Table metrics {
   value decimal [not null]
   recorded_at timestamp [not null]
   practice_id uuid [ref: > practices.id]
-  source text [default: 'manual', note: 'manual, journal, integration']
+  raw_input text
+  source text [default: 'manual', note: 'manual, journal, integration, nlp']
   notes text
   metadata jsonb [default: '{}']
   created_at timestamp [default: `now()`]
@@ -207,6 +212,8 @@ Table practice_completions {
   practice_id uuid [not null, ref: > practices.id]
   completed_at timestamp [not null]
   completed boolean [default: true]
+  raw_input text
+  source text [default: 'manual', note: 'manual or nlp']
   notes text
   created_at timestamp [default: `now()`]
 
@@ -245,6 +252,8 @@ Table medications {
   active boolean [default: true]
   started_at timestamp
   ended_at timestamp
+  raw_input text
+  source text [default: 'manual', note: 'manual or nlp']
   notes text
   is_supplement boolean [default: false]
   created_at timestamp [default: `now()`]
@@ -276,6 +285,8 @@ Table medication_logs {
   medication_id uuid [not null, ref: > medications.id]
   taken_at timestamp [not null]
   taken boolean [default: true]
+  raw_input text
+  source text [default: 'manual', note: 'manual or nlp']
   notes text
   created_at timestamp [default: `now()`]
 
