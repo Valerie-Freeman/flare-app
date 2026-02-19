@@ -1,18 +1,18 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version Change: 1.5.0 → 1.6.0
+Version Change: 1.6.0 → 1.7.0
 Modified Principles: None
 Added Sections:
-  - Principle IX: Testing Philosophy
+  - Principle X: AI-Assisted Data Entry
 Modified Sections:
-  - Development Workflow > Testing Requirements: Updated to reference Principle IX
-  - Governance > Compliance: Added "testing philosophy" to principle checklist
+  - Security & Privacy Requirements: Added NLP input anonymization requirement
+  - Governance > Compliance: Added "AI-assisted data entry" to principle checklist
 Removed Sections: None
 Templates Requiring Updates:
   ✅ .specify/templates/plan-template.md - Constitution Check is dynamic, no changes needed
   ✅ .specify/templates/spec-template.md - No direct constitution references requiring update
-  ✅ .specify/templates/tasks-template.md - No direct constitution references requiring update (governance supersedes for critical paths)
+  ✅ .specify/templates/tasks-template.md - No direct constitution references requiring update
   ✅ .specify/templates/agent-file-template.md - No constitution references requiring update
   ✅ .specify/templates/checklist-template.md - No constitution references requiring update
 Follow-up TODOs: None
@@ -109,6 +109,21 @@ Internal modules MUST NOT be mocked between each other. If a test requires mocki
 
 **Rationale**: Testing philosophy is an extension of Architectural Quality (Principle VI)—hard-to-test code is poorly designed code. Tests serve as a design feedback mechanism. Behavior-based testing supports Single Responsibility (Principle VIII) by encouraging focused, independently testable units. Lean test tooling honors Minimal Dependencies (Principle I). Mandatory critical-path coverage enforces Privacy & Data Security (Principle III) by ensuring auth and encryption boundaries are validated continuously.
 
+### X. AI-Assisted Data Entry
+
+Natural language input is the primary interaction model where it reduces cognitive load—specifically for symptom logging, journal entries, and practice/medication creation. Form-based input (checkboxes, steppers, pickers) remains primary for simple interactions where it is already faster than typing: practice completions, medication adherence, and simple metric entry.
+
+All AI-parsed data MUST:
+- Preserve the user's original text (`raw_input`) alongside structured fields
+- Present parsed results for user confirmation before persisting (reinforces Principle IV: Human-in-the-Loop)
+- Use follow-up questions ONLY for ambiguous critical fields (severity, symptom type)—not a replacement interrogation form
+- Capture anything unmapped into `notes` fields rather than discarding it—no user data is ever lost
+- Process text through the same anonymization pipeline as analytics data (reinforces Principle III)
+
+The LLM is a PARSER, not a DECISION-MAKER. It extracts structured data from natural language. It does not diagnose, recommend, or interpret health significance.
+
+**Rationale**: People with chronic illness often struggle with form fatigue during flares. Natural language input reduces cognitive load and encourages consistent logging for the interactions that benefit from it. Preserving original text maintains data integrity and enables future reprocessing if extraction logic improves. Human confirmation ensures accuracy while keeping the interaction lightweight. Keeping simple interactions form-based respects Clean & Simple UX (Principle V)—the right input method for each interaction, not a one-size-fits-all approach.
+
 ## Security & Privacy Requirements
 
 All code MUST adhere to these security standards:
@@ -117,6 +132,7 @@ All code MUST adhere to these security standards:
 - Row-Level Security (RLS) policies on all user data tables in Supabase
 - JWT validation for all API requests to Python AI service
 - Data anonymization (remove user IDs, absolute timestamps) before sending to LLM APIs
+- NLP input text MUST be anonymized before sending to LLM APIs (same anonymization pipeline as analytics data)
 - HTTPS for all network communication
 - Secure storage (expo-secure-store) for authentication tokens
 - No logging of sensitive user data
@@ -204,11 +220,11 @@ This constitution supersedes all other project practices and documentation. All 
 4. Dependent templates and documentation updated to reflect changes
 
 ### Compliance
-All pull requests, code reviews, and implementation decisions must verify alignment with constitution principles. Any complexity added to the codebase must be explicitly justified against YAGNI, minimal dependencies, single source of truth, single responsibility, architectural quality, and testing philosophy principles.
+All pull requests, code reviews, and implementation decisions must verify alignment with constitution principles. Any complexity added to the codebase must be explicitly justified against YAGNI, minimal dependencies, single source of truth, single responsibility, architectural quality, testing philosophy, and AI-assisted data entry principles.
 
 ### Versioning Policy
 - MAJOR: Backward-incompatible principle removals or redefinitions
 - MINOR: New principles added or material expansions to existing guidance
 - PATCH: Clarifications, wording improvements, non-semantic refinements
 
-**Version**: 1.6.0 | **Ratified**: 2026-01-30 | **Last Amended**: 2026-02-13
+**Version**: 1.7.0 | **Ratified**: 2026-01-30 | **Last Amended**: 2026-02-19

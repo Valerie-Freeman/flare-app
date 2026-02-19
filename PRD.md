@@ -64,9 +64,114 @@ A hybrid approach balancing speed with value demonstration:
 
 ---
 
+## Core Interaction Model
+
+**Guiding principle:** The user should never have to think about Flare's data model. They tell the app how they're feeling, and the app takes care of the rest. (See Constitution Principle X: AI-Assisted Data Entry.)
+
+### NLP-Primary Interactions (high cognitive load reduced)
+
+Natural language input is the primary method for interactions that traditionally require complex, multi-step forms:
+
+- **Symptom logging:** "My knees are killing me today, worse than yesterday, probably from the hike" → symptom log with body_location=knees, severity=7-8 (inferred from "killing me"), trigger=physical activity, notes="probably from the hike"
+- **Journal entries:** "Slept about 6 hours, pretty restless, woke up with moderate pain around a 5, energy is low" → metrics for sleep_duration=6, sleep_quality=poor, morning_pain=5, morning_energy=low
+- **Practice creation:** "I want to start taking 400mg magnesium glycinate every night before bed, hoping it helps with my headaches" → practice with name="Magnesium glycinate 400mg", category=supplements, tracking_type=completion, frequency=daily, reminder_times=["21:00"], expected_symptoms=[headache], notes="400mg before bed"
+- **Medication creation:** "I take 10mg Lexapro every morning and 50mg hydroxyzine at bedtime as needed" → two medication entries with appropriate dosages, frequencies, and timing
+
+### Form-Primary Interactions (already low friction)
+
+Simple interactions stay form-based because they're already faster than typing:
+
+- **Practice completions:** Checkbox on the daily task list (1 tap vs ~20 keystrokes)
+- **Medication adherence:** Taken/skipped toggle on the daily task list
+- **Simple metric entry:** Number stepper for values like water glasses, steps
+
+### Confirmation UX
+
+All NLP-parsed entries are presented in an editable confirmation card before saving. The user can:
+- Tap "Save" to accept the parsed result as-is
+- Adjust any field the LLM inferred (edit severity, change body location, etc.)
+- Switch to the full detailed form if they prefer manual entry
+
+### Follow-Up Questions
+
+When the LLM cannot confidently parse a critical field, it asks a minimal follow-up question:
+- **Example:** "my arm hurts" → "Which arm—left, right, or both? And how would you rate the pain on a 0-10 scale?"
+- Follow-ups are conversational, not a replacement interrogation form
+- Only asked for critical ambiguous fields (severity, symptom type)—not for every missing optional field
+
+### Data Preservation
+
+- **`raw_input` column:** The user's original text is always preserved alongside the structured extraction
+- **`notes` catch-all:** Anything the LLM cannot confidently map to a structured field goes into `notes` verbatim—no user data is ever lost
+- **`source` tracking:** Every entry records whether it was created via `'manual'` (form) or `'nlp'` (natural language)
+
+### Voice Input (Post-MVP)
+
+The NLP endpoint accepts text strings agnostic of input method. Voice-to-text (via Expo Speech API) will feed into the same parsing pipeline when implemented. The architecture supports this by design—no backend changes needed.
+
+### Dashboard Implication
+
+The dashboard's primary surface is the daily task list (checkboxes for practices and medications). The NLP input serves as the "how am I feeling right now?" capture tool—a prominent text field for symptom logging and journaling, not a replacement for the task list.
+
+---
+
 ## MVP Features
 
-### 1. Dashboard (Home Screen)
+### 1. User Authentication
+
+**Status:** Implemented (see [specs/001-user-auth/](specs/001-user-auth/))
+
+Email/password authentication via Supabase Auth with server-side rate limiting, session management, password reset, and row-level security. See feature spec for full details.
+
+---
+
+### 2. AI Service (NLP Input)
+
+**Purpose:** Provide the NLP parsing backend that powers the natural language interaction model described above. This is the infrastructure feature that enables NLP-first input across all subsequent data entry features.
+
+**Deployment:** The AI service deploys with this feature—earlier than originally planned (was tied to Reports & Analytics). It has dual responsibility: (1) NLP input parsing now, (2) analytics and insights later (Feature 10).
+
+**NLP Parsing Endpoint:**
+
+`POST /api/v1/parse-input` — accepts raw text, returns structured data matching the existing database schema.
+
+**Supported Intents:**
+| Intent | Description | Example Input |
+|--------|-------------|---------------|
+| `symptom_report` | Log one or more symptoms | "my knees are killing me, maybe a 7" |
+| `journal_entry` | Morning or evening wellness narrative | "slept 6 hours, restless, pain around 5" |
+| `create_practice` | Set up a new health practice | "start taking 400mg magnesium every night" |
+| `create_medication` | Set up a new medication entry | "I take 10mg Lexapro every morning" |
+
+**Response Format:**
+- Structured JSON entries with confidence scores per field
+- List of ambiguous fields needing follow-up (if any)
+- Unmapped text preserved for `notes` column
+- Original user text preserved as `raw_input`
+
+**Follow-Up Handling:**
+- When critical fields are ambiguous, the response includes follow-up question context
+- Client displays the follow-up conversationally and sends the user's reply for re-parsing
+- Managed via LangChain with manual conversation history (LangGraph migration planned when multi-turn limitations surface)
+
+**Fallback Behavior:**
+- If parsing fails entirely, fall back to the manual form with the user's text pre-populated in `notes`
+- Graceful degradation—the user never loses their input
+
+**Technology:**
+- Python FastAPI with Pydantic validation
+- LangChain structured output for entity extraction
+- OpenAI GPT-4o-mini for parsing (provider-agnostic via LangChain abstraction)
+- User's configured symptom types, practices, and medications sent as parsing context (anonymized)
+
+**Privacy:**
+- All text anonymized before sending to LLM (same pipeline as analytics data)
+- JWT validation on all requests
+- No logging of raw user health text on the AI service
+
+---
+
+### 3. Dashboard (Home Screen)
 
 **Purpose:** Serve as a daily task-oriented hub that encourages adherence and engagement.
 
@@ -79,9 +184,9 @@ A hybrid approach balancing speed with value demonstration:
 - Journal completion status
 
 **Quick Actions:**
-- Log symptom button (one-tap to start)
+- NLP text input — "How are you feeling?" prompt for symptom logging and journaling (see Core Interaction Model)
 - Morning/evening journal shortcuts
-- Frequent symptom tiles for quick logging
+- Frequent symptom tiles for quick one-tap logging (form-based fallback)
 
 **At-a-Glance Metrics:**
 - Trend indicators (arrows showing if key symptoms are up/down vs last week)
@@ -89,9 +194,18 @@ A hybrid approach balancing speed with value demonstration:
 
 ---
 
-### 2. Symptom Tracking
+### 4. Symptom Tracking
 
 **Purpose:** Track every symptom the user experiences to identify patterns and responses to medication and lifestyle changes.
+
+**Primary Input: Natural Language** (see Core Interaction Model)
+
+Symptom logging is the highest-value NLP use case. Users describe what they're experiencing in plain language, and the AI service parses it into structured data:
+
+> "My knees are killing me today, worse than yesterday, probably a 7. Maybe from the hike."
+> → symptom_type=knee pain, severity=7, body_location=knees, notes="worse than yesterday, probably from the hike"
+
+**Manual/Edit Mode:** Users can switch to the detailed form to enter or adjust any field directly. The form is also the fallback if NLP parsing fails.
 
 **Symptom Types:**
 - Predefined symptom library with comprehensive options
@@ -108,6 +222,8 @@ A hybrid approach balancing speed with value demonstration:
 | Duration | No | How long it lasted (or "ongoing") |
 | Location | No | Body location (for physical symptoms) |
 | Notes | No | Free text for additional context |
+| Raw input | No | Original user text if entered via NLP |
+| Source | Auto | `'manual'` or `'nlp'` — how the entry was created |
 
 **Severity Scale:**
 - Unified 0-10 numeric scale stored for all symptoms
@@ -119,14 +235,27 @@ A hybrid approach balancing speed with value demonstration:
 
 ---
 
-### 3. Health Practices
+### 5. Health Practices
 
 **Purpose:** Help users commit to and track health-related activities, habits, and behaviors to identify what improves their wellbeing.
 
 **Overview:**
-- Users create "practices" through a unified wizard (supplements, exercise, dietary commitments, etc.)
+- Users create "practices" — either via natural language or a form-based wizard
 - Each practice can optionally link to symptoms the user expects it to help
 - Practices appear on the dashboard as a daily task list
+
+**Practice Creation: NLP-Primary** (see Core Interaction Model)
+
+Setting up a new practice is the tedious part — name, category, tracking type, frequency, targets, reminders, symptom links. NLP simplifies this:
+
+> "I want to start taking 400mg magnesium glycinate every night before bed, hoping it helps with my headaches"
+> → name="Magnesium glycinate 400mg", category=supplements, tracking_type=completion, frequency=daily, target_frequency=1, expected_symptoms=[headache], notes="before bed"
+
+The parsed result is presented in an editable confirmation card. Users can adjust any field or switch to the full creation wizard.
+
+**Practice Completion/Logging: Form-Primary**
+
+Daily completion tracking stays form-based — checkboxes on the dashboard task list are faster than typing. Metric logging uses number steppers.
 
 **Categories (Optional):**
 - **Supplements** — Vitamins, minerals, herbal supplements
@@ -184,21 +313,42 @@ See [Data Dictionary](docs/data-dictionary.md) for database schema details.
 
 ---
 
-### 4. Medication Tracking
+### 6. Medication Tracking
 
 **Purpose:** Track medications that may affect symptoms or interact with lifestyle choices.
 
+**Medication Creation: NLP-Primary** (see Core Interaction Model)
+
+> "I take 10mg Lexapro every morning and 50mg hydroxyzine at bedtime as needed"
+> → Two medication entries with appropriate names, dosages, frequencies, and timing
+
+The parsed result is presented in an editable confirmation card. Users can adjust any field or use the manual creation form.
+
+**Medication Adherence: Form-Primary**
+
+Daily taken/skipped tracking stays form-based — toggles on the dashboard task list are faster than typing.
+
 **Feature Details:**
-- Similar UX to supplement tracking
 - Log medication name, dosage, timing, frequency
 - Track adherence through daily task list
 - Note: Medication interaction warnings are a post-MVP feature
 
 ---
 
-### 5. Journal Entries
+### 7. Journal Entries
 
 **Purpose:** Gather daily wellness data beyond immediate symptom tracking.
+
+**Primary Input: Natural Language** (see Core Interaction Model)
+
+Journal entries are a natural fit for NLP — users describe their morning/evening state as a single narrative instead of filling in 4-5 separate fields:
+
+> "Slept about 6 hours, pretty restless. Woke up with moderate pain around a 5. Energy is low, maybe a 3."
+> → metrics: sleep_duration=6, sleep_quality=poor (inferred from "restless"), morning_pain=5, morning_energy=3
+
+Anything the parser can't map to a structured metric goes into the journal's notes field.
+
+**Manual/Edit Mode:** Users can switch to individual sliders/inputs for each field, or adjust any value the LLM inferred.
 
 **Morning Journal:**
 - Hours of sleep
@@ -217,7 +367,7 @@ See [Data Dictionary](docs/data-dictionary.md) for database schema details.
 
 ---
 
-### 6. Reminders & Notifications
+### 8. Reminders & Notifications
 
 **Purpose:** Keep users consistent with their health commitments.
 
@@ -229,7 +379,24 @@ See [Data Dictionary](docs/data-dictionary.md) for database schema details.
 
 ---
 
-### 7. Reports & Analytics
+### 9. Experiments & A/B Comparisons
+
+**Purpose:** Allow users to formally test lifestyle interventions and compare results.
+
+**Feature Details:**
+- Create named experiments (e.g., "Testing magnesium for 30 days")
+- Set start and end dates
+- Compare two different periods/approaches side by side
+- Comprehensive comparison across all tracked data:
+  - Symptom frequency and severity
+  - Journal-based wellness scores (mood, energy, sleep quality)
+  - Lifestyle adherence rates
+
+---
+
+### 10. Reports & Analytics
+
+**Note:** The AI service infrastructure deploys with Feature 2 (AI Service / NLP Input). This feature extends that service with analytics and reporting endpoints.
 
 #### Graphs and Statistics
 **Purpose:** Quick visualization of symptom patterns over time.
@@ -276,7 +443,7 @@ See [Data Dictionary](docs/data-dictionary.md) for database schema details.
 
 ---
 
-### 8. Data Export
+### 11. Data Export
 
 **Purpose:** Ensure users own their health data.
 
@@ -306,9 +473,9 @@ See [Data Dictionary](docs/data-dictionary.md) for database schema details.
 - Share specific reports with chosen contacts
 
 ### Additional Features to Consider
-- Voice input for symptom logging
 - Apple Health / Google Fit integration
 - Wearable device integration
+- On-device NLP model for offline parsing (reduces latency, enables offline use)
 - On-device AI for maximum privacy option
 
 ---
@@ -324,7 +491,7 @@ A three-tier architecture separating concerns:
 ### Client — React Native (Expo)
 - Cross-platform mobile app (iOS and Android)
 - Communicates with Supabase directly for CRUD operations
-- Communicates with Python AI service for report generation and insights
+- Communicates with Python AI service for NLP input parsing and insights
 - Home screen widget for quick symptom logging
 
 ### Backend — Supabase
@@ -337,15 +504,13 @@ A three-tier architecture separating concerns:
 
 ### AI Service — Python (FastAPI + LangChain)
 - **Framework:** FastAPI with Pydantic validation
-- **AI Framework:** LangChain (start with chains for report generation, refactor to LangGraph when conversational agent features require it)
+- **AI Framework:** LangChain structured output (start with chains, migrate to LangGraph when multi-turn follow-up limitations surface)
 - **LLM Provider:** Provider-agnostic via LangChain abstraction (can switch between OpenAI, Anthropic, Google Gemini)
-- **Responsibilities:**
-  - Generate AI-powered reports and summaries
-  - Correlation detection across symptom and lifestyle data
-  - Pattern recognition and anomaly detection
-  - Comprehensive health summaries for doctor visits
-  - Future: conversational agent for user queries about their data
-- **Data flow:** Receives anonymized, time-scoped user data from client/Supabase → processes with LLM → returns structured insights
+- **Dual Responsibility (phased deployment):**
+  - **Phase 1 — NLP Input Parsing (Feature 2):** Parse natural language into structured health data. Supports symptom logging, journal entries, practice creation, and medication creation. Returns structured JSON with confidence scores and ambiguity flags.
+  - **Phase 2 — Analytics & Insights (Feature 10):** Generate AI-powered reports, correlation detection, pattern recognition, anomaly alerts, and doctor visit summaries.
+- **Data flow (NLP):** User text → anonymize → LLM structured extraction → return parsed entries to client for confirmation → client writes to Supabase
+- **Data flow (Analytics):** Receives anonymized, time-scoped user data from Supabase → processes with LLM → returns structured insights
 
 ### Deployment & Infrastructure
 - **AI Service:** Docker container deployed to DigitalOcean (App Platform or Droplet)
@@ -360,11 +525,12 @@ A three-tier architecture separating concerns:
 - **Encryption:** Server-side encryption at rest (Supabase AES-256) + TLS in transit. See Privacy & Security section for rationale.
 
 ### AI/LLM Approach
-- Start with LangChain for structured report generation chains
+- Start with LangChain structured output for NLP input parsing (Feature 2) and later report generation (Feature 10)
 - Abstract LLM provider so models can be swapped or compared
 - Anonymize user data before sending to LLM services
-- Plan architecture to accommodate LangGraph migration when conversational agent features are built
-- Agent workflows will evolve: simple chains → multi-step analysis → conversational agent
+- Follow-up conversations managed via manual conversation history passing (second LLM call with prior context)
+- LangGraph migration planned when multi-turn follow-up limitations surface in symptom logging, complex practice/medication creation flows, or analytics queries requiring conversation state
+- Voice-to-text (post-MVP): Expo Speech API on client feeds text into the same NLP endpoint—no backend changes needed
 
 ---
 
@@ -381,8 +547,10 @@ A three-tier architecture separating concerns:
 ## Open Questions
 
 1. Monetization model (free with premium, subscription, one-time purchase)
-2. Authentication flow details between React Native client, Supabase, and Python AI service
+2. ~~Authentication flow details between React Native client, Supabase, and Python AI service~~ — Partially resolved in [specs/001-user-auth/](specs/001-user-auth/). JWT forwarding to AI service still needs specification.
 3. CI/CD pipeline specifics (GitHub Actions workflow details)
 4. Testing strategy (unit, integration, AI feature testing)
 5. Infrastructure as Code tooling choice (Terraform, Pulumi, or DigitalOcean App Spec)
 6. Specific LLM model selection for different tasks (cost vs quality tradeoffs)
+7. Acceptable latency for NLP parsing? (target: <2 seconds for single-entry parsing)
+8. Should NLP support batch entries from a single multi-topic input? (e.g., "Took magnesium, headache is a 6, did yoga for 30 min" → 3 separate entries across types)

@@ -6,6 +6,7 @@
 
 ### Authentication Settings
 - [ ] **Enable email confirmation** - Authentication → Providers → Email → Turn ON "Confirm email"
+- [ ] **Enforce password strength** - Authentication → Providers → Email → Set minimum length to 8, require lowercase, uppercase, and digits (must match client-side validation in sign-up.js)
 - [ ] **Set production Site URL** - Authentication → URL Configuration → Update Site URL to production domain
 - [ ] **Update Redirect URLs** - Add production deep link URLs
 

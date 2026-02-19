@@ -498,6 +498,8 @@ symptom_logs (
   started_at TIMESTAMP NOT NULL,
   duration_minutes INTEGER,            -- null = ongoing or unknown
   location_id UUID REFERENCES body_locations,
+  raw_input TEXT,                        -- original NLP text, null for manual
+  source TEXT DEFAULT 'manual',          -- 'manual' or 'nlp'
   notes TEXT,
   metadata JSONB,                      -- flexible additional data
   created_at TIMESTAMP DEFAULT now(),
@@ -512,7 +514,8 @@ metrics (
   value NUMERIC NOT NULL,
   recorded_at TIMESTAMP NOT NULL,
   practice_id UUID REFERENCES practices,  -- nullable link to practice
-  source TEXT DEFAULT 'manual',        -- 'manual', 'journal', 'integration'
+  raw_input TEXT,                        -- original NLP text, null for manual
+  source TEXT DEFAULT 'manual',        -- 'manual', 'journal', 'integration', 'nlp'
   notes TEXT,
   metadata JSONB,
   created_at TIMESTAMP DEFAULT now()
@@ -542,6 +545,8 @@ practices (
   active BOOLEAN DEFAULT true,
   started_at TIMESTAMP,
   ended_at TIMESTAMP,
+  raw_input TEXT,                        -- original NLP text, null for manual
+  source TEXT DEFAULT 'manual',          -- 'manual' or 'nlp'
   notes TEXT,
   created_at TIMESTAMP DEFAULT now(),
   updated_at TIMESTAMP DEFAULT now()
@@ -554,6 +559,8 @@ practice_completions (
   practice_id UUID REFERENCES practices,
   completed_at TIMESTAMP NOT NULL,
   completed BOOLEAN DEFAULT true,      -- false = explicitly skipped
+  raw_input TEXT,                        -- original NLP text, null for manual
+  source TEXT DEFAULT 'manual',          -- 'manual' or 'nlp'
   notes TEXT,
   created_at TIMESTAMP DEFAULT now()
 )
@@ -576,6 +583,8 @@ medications (
   active BOOLEAN DEFAULT true,
   started_at TIMESTAMP,
   ended_at TIMESTAMP,
+  raw_input TEXT,                        -- original NLP text, null for manual
+  source TEXT DEFAULT 'manual',          -- 'manual' or 'nlp'
   notes TEXT,
   is_supplement BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT now(),
@@ -596,6 +605,8 @@ medication_logs (
   medication_id UUID REFERENCES medications,
   taken_at TIMESTAMP NOT NULL,
   taken BOOLEAN DEFAULT true,          -- false = skipped
+  raw_input TEXT,                        -- original NLP text, null for manual
+  source TEXT DEFAULT 'manual',          -- 'manual' or 'nlp'
   notes TEXT,
   created_at TIMESTAMP DEFAULT now()
 )

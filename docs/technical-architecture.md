@@ -57,9 +57,45 @@ This document outlines the technical architecture and key technology decisions f
 
 ## Data Flow
 
-### Standard Data Flow
+### Primary Data Flow (NLP Input)
+
+For high-friction data entry — symptom logging, journal entries, and practice/medication creation (see [PRD: Core Interaction Model](../PRD.md#core-interaction-model)):
+
 ```
-User Action
+User types natural language (e.g., "my knees are killing me, maybe a 7")
+    ↓
+Mobile App sends text to AI Service
+    ↓
+POST /api/v1/parse-input (JWT in Authorization header)
+    ↓
+Python AI Service:
+    1. Validate JWT → extract user_id
+    2. Fetch user's configured types from Supabase (symptom types, practices, medications)
+    3. Anonymize text (strip PII)
+    4. Send to LLM with structured output schema + user types as context
+    5. Parse LLM response into entry objects with confidence scores
+    ↓
+Return structured entries to Mobile App
+    ↓
+Mobile App shows editable confirmation card
+    ↓ (user confirms or adjusts)
+    ↓ (if ambiguous fields: follow-up question → user responds → second LLM call)
+    ↓
+TanStack Query Mutation (with raw_input preserved)
+    ↓
+Supabase Client (with RLS + JWT)
+    ↓
+PostgreSQL Database (encrypted at rest)
+    ↓
+TanStack Query cache invalidation → UI Update
+```
+
+### Form-Based Data Flow (Fallback & Simple Interactions)
+
+For low-friction interactions — practice completions, medication adherence, metric entry — and as a fallback/edit mode for NLP entries:
+
+```
+User Action (checkbox tap, number stepper, form submission)
     ↓
 Component (with React Hook Form)
     ↓
@@ -121,17 +157,99 @@ UI Update (automatic re-render)
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | **Framework** | FastAPI | Async API framework with automatic OpenAPI docs |
-| **AI Framework** | LangChain | LLM abstraction layer, provider-agnostic |
-| **LLM Provider** | OpenAI GPT-4o-mini | Cost-effective model for insight generation |
-| **Validation** | Pydantic | Request/response validation |
+| **AI Framework** | LangChain | LLM abstraction layer, structured output, provider-agnostic |
+| **LLM Provider** | OpenAI GPT-4o-mini | Cost-effective model for structured extraction and insight generation |
+| **Validation** | Pydantic | Request/response validation and LLM structured output schemas |
 | **Deployment** | Docker on DigitalOcean | Containerized deployment |
 
-### AI Service Responsibilities
+### AI Service Responsibilities (Dual-Phase Deployment)
 
+**Phase 1 — NLP Input Parsing (Feature 2 / 002-ai-service):**
+- Parse natural language text into structured health data entries
+- Supported intents: `symptom_report`, `journal_entry`, `create_practice`, `create_medication`
+- Map user descriptions to their existing configured types (symptom types, practices, medications) via fuzzy matching
+- Return structured JSON with per-field confidence scores and ambiguity flags
+- Handle follow-up conversations for ambiguous critical fields via manual conversation history
+
+**Phase 2 — Analytics & Insights (Feature 10 / 010-reports-analytics):**
 - Generate AI-powered health insights from user data
 - Detect correlations between symptoms and lifestyle choices
 - Pattern recognition and anomaly detection
 - Generate doctor visit reports (PDF export)
+
+### NLP Parsing Pipeline
+
+```
+Input: Raw text string from user + optional context hint + user's configured types
+
+Pipeline stages:
+1. Text sanitization      — Strip PII markers, normalize whitespace
+2. Intent classification  — symptom_report | journal_entry | create_practice | create_medication
+3. Entity extraction      — Symptom names, severity values, time references, medication names,
+                            dosages, frequencies, metric values, body locations
+4. Schema mapping         — Map extracted entities to user's configured types via fuzzy matching
+5. Confidence scoring     — Per field: high (>0.8) / medium (0.5-0.8) / low (<0.5)
+6. Ambiguity detection    — Flag fields needing follow-up (critical fields with low confidence)
+7. Response construction  — Structured JSON entries + unmapped text for notes + raw_input preserved
+```
+
+Technology: LangChain structured output with Pydantic models defining the extraction schema. User's types/practices/medications injected into the LLM prompt as context (anonymized). Follow-up conversations managed by passing conversation history to a second LLM call.
+
+### NLP API Contract
+
+```
+POST /api/v1/parse-input
+Authorization: Bearer <supabase-jwt>
+Content-Type: application/json
+
+Request:
+{
+  "text": "woke up with a bad migraine, maybe 7/10, and some nausea",
+  "context": "symptom_report",       // optional hint from current screen
+  "conversation_history": [],         // prior messages if follow-up
+  "user_types": {                     // user's configured schema
+    "symptom_types": [...],
+    "practices": [...],
+    "medications": [...]
+  }
+}
+
+Response:
+{
+  "entries": [
+    {
+      "type": "symptom_log",
+      "confidence": 0.92,
+      "data": {
+        "symptom_type": "Migraine",
+        "severity": 7,
+        "started_at": "2026-02-19T06:00:00Z",
+        "body_location": "head",
+        "notes": null
+      },
+      "ambiguous_fields": []
+    },
+    {
+      "type": "symptom_log",
+      "confidence": 0.85,
+      "data": {
+        "symptom_type": "Nausea",
+        "severity": null,
+        "started_at": "2026-02-19T06:00:00Z",
+        "notes": null
+      },
+      "ambiguous_fields": ["severity"]
+    }
+  ],
+  "follow_up": {
+    "question": "How would you rate the nausea on a 0-10 scale?",
+    "target_entry": 1,
+    "target_field": "severity"
+  },
+  "unmapped_text": null,
+  "raw_input": "woke up with a bad migraine, maybe 7/10, and some nausea"
+}
+```
 
 ### Data Flow for AI Insights
 
@@ -168,6 +286,7 @@ Return to mobile app
 ### Communication Pattern
 
 - Synchronous HTTP request/response
+- NLP parsing target: <2 seconds per request (single entry)
 - AI insight generation completes in 2-5 seconds
 - No message queue needed for MVP
 
@@ -179,8 +298,9 @@ Return to mobile app
 
 1. **At Rest:** All data encrypted by Supabase (AES-256)
 2. **In Transit:** HTTPS/TLS for all API calls
-3. **For LLM Analysis:** Data anonymized before sending to OpenAI (user IDs and absolute timestamps removed)
-4. **Access Control:** Row-Level Security (RLS) policies isolate user data
+3. **For NLP Parsing:** User input text anonymized before sending to LLM (same pipeline as analytics)
+4. **For LLM Analysis:** Data anonymized before sending to OpenAI (user IDs and absolute timestamps removed)
+5. **Access Control:** Row-Level Security (RLS) policies isolate user data
 
 ### Row-Level Security (RLS)
 
@@ -213,22 +333,24 @@ All user data tables have RLS policies enforcing:
 ## Cost Breakdown
 
 ### MVP Phase (0-100 users)
-| Service | Monthly Cost |
-|---------|--------------|
-| Expo SDK/CLI/EAS (30 builds/month) | $0 |
-| Supabase Free Tier | $0 |
-| DigitalOcean Basic Droplet | $6 |
-| GPT-4o-mini (100 users) | ~$0.50 |
-| **Total** | **~$7/month** |
+| Service | Monthly Cost | Notes |
+|---------|--------------|-------|
+| Expo SDK/CLI/EAS (30 builds/month) | $0 | |
+| Supabase Free Tier | $0 | |
+| DigitalOcean Basic Droplet | $6 | AI service hosting |
+| GPT-4o-mini — NLP parsing (100 users) | ~$3-8 | ~5-10 parses/user/day, ~200 input + 200 output tokens each |
+| GPT-4o-mini — Analytics (100 users) | ~$0.50 | Weekly insight generation |
+| **Total** | **~$10-15/month** | |
 
 ### At Scale (1,000 users)
-| Service | Monthly Cost |
-|---------|--------------|
-| Expo (upgrade optional) | $0-99 |
-| Supabase Pro | $25 |
-| DigitalOcean (scaled) | $24 |
-| GPT-4o-mini | $4 |
-| **Total** | **~$53-152/month** |
+| Service | Monthly Cost | Notes |
+|---------|--------------|-------|
+| Expo (upgrade optional) | $0-99 | |
+| Supabase Pro | $25 | |
+| DigitalOcean (scaled) | $24 | |
+| GPT-4o-mini — NLP parsing | ~$30-80 | Per-entry parsing scales linearly with users |
+| GPT-4o-mini — Analytics | ~$4 | |
+| **Total** | **~$83-232/month** | |
 
 ---
 
@@ -245,8 +367,8 @@ All user data tables have RLS policies enforcing:
 | **Backend** | Supabase | Managed PostgreSQL + Auth + RLS |
 | **Auth** | Supabase Auth + JWT | Industry standard, automatic token refresh |
 | **Encryption** | Supabase AES-256 at rest | Industry standard, no client-side complexity |
-| **AI Framework** | FastAPI + LangChain | Fast, modern, provider-agnostic |
-| **LLM** | OpenAI GPT-4o-mini | Best cost/performance for structured output |
+| **AI Framework** | FastAPI + LangChain | Fast, modern, provider-agnostic. Structured output for NLP parsing + analytics |
+| **LLM** | OpenAI GPT-4o-mini | Best cost/performance for structured extraction and insight generation |
 | **Deployment** | EAS + Supabase Cloud + DigitalOcean | Low cost, managed services |
 
 ## Development Environment Setup
@@ -306,8 +428,11 @@ Items discovered during implementation that should be addressed as the applicati
 
 | Item | Trigger | Approach |
 |------|---------|----------|
-| LangGraph migration | Conversational agent features needed | Refactor LangChain chains to LangGraph for multi-turn interactions |
+| LangGraph migration | Multi-turn follow-up limitations in symptom logging, complex practice/medication creation flows, or analytics queries requiring conversation state | Refactor LangChain chains to LangGraph for stateful multi-turn interactions with conditional routing |
 | LLM provider evaluation | Cost optimization or capability needs | LangChain abstraction allows swapping providers without app changes |
+| Voice-to-text integration | User demand for hands-free input | Expo Speech API on client converts voice to text, same NLP endpoint processes it — no backend changes |
+| On-device NLP parsing | Offline requirement or latency concerns | Local model (ONNX/CoreML) for basic parsing, cloud for complex extraction |
+| NLP response caching | Repeated similar inputs detected | Cache parse results for common phrases to reduce LLM costs and latency |
 
 ### Infrastructure
 
