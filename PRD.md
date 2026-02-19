@@ -456,6 +456,12 @@ Anything the parser can't map to a structured metric goes into the journal's not
 
 ## Post-MVP Features (Future Roadmap)
 
+### Experiments & A/B Comparisons
+- Create named experiments (e.g., "Testing magnesium for 30 days")
+- Set start and end dates
+- Compare two different periods/approaches side by side
+- Comprehensive comparison across all tracked data (symptom frequency/severity, journal-based wellness scores, lifestyle adherence rates)
+
 ### Medication/Supplement Interaction Warnings
 - Integrate with drug interaction database
 - Automatic alerts for potential interactions

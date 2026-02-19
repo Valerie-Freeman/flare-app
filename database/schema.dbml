@@ -300,31 +300,9 @@ Table medication_logs {
 }
 
 // ============================================
-// EXPERIMENTS
+// EXPERIMENTS (Post-MVP)
 // ============================================
-
-Table experiments {
-  id uuid [pk, default: `uuid_generate_v4()`]
-  user_id uuid [not null]
-  name text [not null]
-  description text
-  start_date date [not null]
-  end_date date
-  status text [default: 'active', note: 'active, completed, cancelled']
-  practice_ids jsonb [note: 'Related practices']
-  target_symptoms jsonb [note: 'symptom_type_ids to monitor']
-  notes text
-  created_at timestamp [default: `now()`]
-  updated_at timestamp [default: `now()`]
-
-  indexes {
-    user_id
-    (user_id, status)
-    (start_date, end_date)
-  }
-
-  note: 'User-defined experiments to test interventions'
-}
+// Deferred to post-MVP. Schema preserved for future implementation.
 
 // ============================================
 // TABLE GROUPS FOR VISUALIZATION
@@ -356,7 +334,6 @@ TableGroup user_logs {
 TableGroup user_config {
   practices
   medications
-  experiments
 }
 
 TableGroup symptom_links {
