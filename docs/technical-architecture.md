@@ -164,7 +164,7 @@ UI Update (automatic re-render)
 
 ### AI Service Responsibilities (Dual-Phase Deployment)
 
-**Phase 1 — NLP Input Parsing (Feature 2 / 002-ai-service):**
+**Phase 1 — NLP Input Parsing (Feature 2 / 003-ai-service):**
 - Parse natural language text into structured health data entries
 - Supported intents: `symptom_report`, `journal_entry`, `create_practice`, `create_medication`
 - Map user descriptions to their existing configured types (symptom types, practices, medications) via fuzzy matching
