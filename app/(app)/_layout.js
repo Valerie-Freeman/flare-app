@@ -1,4 +1,4 @@
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Slot } from 'expo-router';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -17,10 +17,5 @@ export default function AppLayout() {
     return <Redirect href="/(auth)/welcome" />;
   }
 
-  return (
-    <Stack>
-      <Stack.Screen name="index" options={{ title: 'Home' }} />
-      <Stack.Screen name="settings/security" options={{ title: 'Security' }} />
-    </Stack>
-  );
+  return <Slot />;
 }

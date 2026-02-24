@@ -131,6 +131,7 @@ describe('signIn', () => {
   });
 
   it('continues login even if rate limit check fails', async () => {
+    jest.spyOn(console, 'error').mockImplementation();
     supabase.rpc.mockResolvedValueOnce({
       data: null,
       error: new Error('DB error'),
@@ -144,6 +145,7 @@ describe('signIn', () => {
     const result = await signIn('test@example.com', 'password123');
 
     expect(result).toEqual({ user: mockUser, session: mockSession });
+    console.error.mockRestore();
   });
 });
 

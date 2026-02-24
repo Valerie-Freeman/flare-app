@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { StyleSheet, ScrollView } from 'react-native';
 import { Text, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../../../src/contexts/AuthContext';
-import { resetPassword } from '../../../src/services/auth';
+import { useAuth } from '../../../../src/contexts/AuthContext';
+import { resetPassword } from '../../../../src/services/auth';
 
 export default function SecuritySettingsScreen() {
   const { session, signOut } = useAuth();
