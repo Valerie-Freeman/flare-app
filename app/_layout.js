@@ -1,7 +1,9 @@
 import { Stack } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { PaperProvider, Banner } from 'react-native-paper';
+import queryClient from '../src/lib/queryClient';
 
 function OfflineBanner() {
   const { isOnline } = useAuth();
@@ -33,11 +35,13 @@ function AppContent() {
 
 export default function RootLayout() {
   return (
-    <PaperProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </PaperProvider>
+    <QueryClientProvider client={queryClient}>
+      <PaperProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </PaperProvider>
+    </QueryClientProvider>
   );
 }
 
